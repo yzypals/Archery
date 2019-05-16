@@ -132,10 +132,10 @@ def submit(request):
         context = {'errMsg': '页面提交参数可能为空'}
         return render(request, 'error.html', context)
 
-    # 未开启备份选项，强制设置备份
+    # 未开启备份选择项，强制设置不备份备份
     sys_config = SysConfig()
     if not sys_config.get('enable_backup_switch'):
-        is_backup = True
+        is_backup = False
 
     # 验证组权限（用户是否在该组、该组是否有指定实例）
     try:
