@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import logging
 import traceback
 
@@ -56,6 +57,9 @@ class ArcheryAuth(object):
     def authenticate(self):
         username = self.request.POST.get('username')
         password = self.request.POST.get('password')
+        hl = hashlib.md5()
+        hl.update(password.encode(encoding='utf-8'))
+        password = hl.hexdigest()
         # 验证时候在加锁时间内
         try:
             user = Users.objects.get(username=username)
