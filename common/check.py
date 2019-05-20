@@ -145,7 +145,10 @@ def instance(request):
     instance = Instance.objects.get(id=instance_id)
     try:
         engine = get_engine(instance=instance)
-        engine.get_connection()
+        conn = engine.get_connection()
+        if not conn:
+            result['status'] = 1
+            result['msg'] = '无法连接实例,请查看参数是否完整'
     except Exception as e:
         result['status'] = 1
         result['msg'] = '无法连接实例,\n{}'.format(str(e))

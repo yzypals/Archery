@@ -157,12 +157,12 @@ class OracleEngine(EngineBase):
     def filter_sql(self, sql='', limit_num=0):
         sql_lower = sql.lower()
         # 对查询sql增加limit限制
-        if re.match(r"^select", sql_lower):
-            if sql_lower.find(' rownum ') == -1:
-                if sql_lower.find(' where ') == -1:
-                    return f"{sql.rstrip(';')} WHERE ROWNUM <= {limit_num}"
-                else:
-                    return f"{sql.rstrip(';')} AND ROWNUM <= {limit_num}"
+        # if re.match(r"^select", sql_lower):
+        #     if sql_lower.find(' rownum ') == -1:
+        #         if sql_lower.find(' where ') == -1:
+        #             return f"{sql.rstrip(';')} WHERE ROWNUM <= {limit_num}"
+        #         else:
+        #             return f"{sql.rstrip(';')} AND ROWNUM <= {limit_num}"
         return sql.strip()
 
     def query(self, db_name=None, sql='', limit_num=0, close_conn=True):
