@@ -57,6 +57,7 @@ class ArcheryAuth(object):
     def authenticate(self):
         username = self.request.POST.get('username')
         password = self.request.POST.get('password')
+        # TODO 这里需要优化，只有ldap的密码才做md5加密
         if username != "admin":
             hl = hashlib.md5()
             hl.update(password.encode(encoding='utf-8'))
