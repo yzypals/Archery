@@ -136,3 +136,19 @@ class MsgSender(object):
 返回错误信息:{}
 请求url:{}
 请求data:{}""".format(r_json['errcode'], r_json['errmsg'], url, data))
+
+    @staticmethod
+    def send_qweixin(url, users, content):
+        """
+        发送企业微信消息
+        :param url:
+        :param users:
+        :param content:
+        :return:
+        """
+        for user in users:
+            data = {
+                "users": user,
+                "content": "{}".format(content)
+            }
+            requests.post(url=url, data=data)

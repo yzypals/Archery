@@ -24,7 +24,7 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
     """
     # 判断是否开启消息通知，未开启直接返回
     sys_config = SysConfig()
-    if not sys_config.get('mail') and not sys_config.get('ding'):
+    if not sys_config.get('mail') and not sys_config.get('ding') and not sys_config.get('qweixin'):
         logger.info('未开启消息通知，可在系统设置中开启')
         return None
     # 获取审核信息
@@ -41,6 +41,7 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
     workflow_from = audit_detail.create_user_display
     group_name = audit_detail.group_name
     webhook_url = ResourceGroup.objects.get(group_id=audit_detail.group_id).ding_webhook
+    qweixin_url = sys_config.get('qweixin_url')
 
     # 获取当前审批和审批流程
     workflow_auditors, current_workflow_auditors = Audit.review_info(audit_detail.workflow_id,
@@ -78,6 +79,8 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
         auth_group_names = Group.objects.get(id=audit_detail.current_audit).name
         msg_email_reciver = [user.email for user in
                              auth_group_users([auth_group_names], audit_detail.group_id)]
+        msg_qweixin_users = [user.username for user in
+                             auth_group_users([auth_group_names], audit_detail.group_id)]
         # 消息内容
         msg_content = '''发起人：{}\n组：{}\n审批流程：{}\n当前审批：{}\n工单名称：{}\n工单地址：{}\n工单详情预览：{}\n'''.format(
             workflow_from,
@@ -91,6 +94,7 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
         msg_title = "[{}]工单审核通过#{}".format(workflow_type_display, audit_id)
         # 接收人，仅发送给申请人
         msg_email_reciver = [Users.objects.get(username=audit_detail.create_user).email]
+        msg_qweixin_users = [audit_detail.create_user]
         # 消息内容
         msg_content = '''发起人：{}\n组：{}\n审批流程：{}\n工单名称：{}\n工单地址：{}\n工单详情预览：{}\n'''.format(
             workflow_from,
@@ -103,6 +107,7 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
         msg_title = "[{}]工单被驳回#{}".format(workflow_type_display, audit_id)
         # 接收人，仅发送给申请人
         msg_email_reciver = [Users.objects.get(username=audit_detail.create_user).email]
+        msg_qweixin_users = [audit_detail.create_user]
         # 消息内容
         msg_content = '''工单名称：{}\n工单地址：{}\n驳回原因：{}\n提醒：此工单被审核不通过，请按照驳回原因进行修改！'''.format(
             workflow_title,
@@ -114,6 +119,7 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
         auth_group_names = [Group.objects.get(id=auth_group_id).name for auth_group_id in
                             audit_detail.audit_auth_groups.split(',')]
         msg_email_reciver = [user.email for user in auth_group_users(auth_group_names, audit_detail.group_id)]
+        msg_qweixin_users = [user.username for user in auth_group_users(auth_group_names, audit_detail.group_id)]
         # 消息内容
         msg_content = '''发起人：{}\n组：{}\n工单名称：{}\n工单地址：{}\n提醒：提交人主动终止流程'''.format(
             workflow_from,
@@ -132,6 +138,8 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
             msg_sender.send_email(msg_title, msg_content, msg_email_reciver, list_cc_addr=msg_email_cc)
         if sys_config.get('ding'):
             msg_sender.send_ding(webhook_url, msg_title + '\n' + msg_content)
+        if sys_config.get('qweixin'):
+            msg_sender.send_qweixin(qweixin_url, msg_qweixin_users ,msg_title + '\n' + msg_content)
     elif msg_type == 1:
         msg_sender.send_email(msg_title, msg_content, msg_email_reciver, list_cc_addr=msg_email_cc)
     elif msg_type == 2:
