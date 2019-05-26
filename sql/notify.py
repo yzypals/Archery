@@ -52,10 +52,9 @@ def notify_for_audit(audit_id, msg_type=0, **kwargs):
         workflow_type_display = WorkflowDict.workflow_type['query_display']
         workflow_detail = QueryPrivilegesApply.objects.get(apply_id=workflow_id)
         if workflow_detail.priv_type == 1:
-            workflow_content = '''数据库清单：{}\n授权截止时间：{}\n结果集：{}\n'''.format(
+            workflow_content = '''数据库清单：{}\n授权截止时间：{}\n'''.format(
                 workflow_detail.db_list,
-                datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'),
-                workflow_detail.limit_num)
+                datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'))
         elif workflow_detail.priv_type == 2:
             workflow_content = '''数据库：{}\n表清单：{}\n授权截止时间：{}\n结果集：{}\n'''.format(
                 workflow_detail.db_list,
