@@ -125,6 +125,17 @@ class OracleEngine(EngineBase):
         result = self.query(sql=sql)
         return result
 
+    def describe_index(self, db_name, tb_name):
+        """return ResultSet"""
+        sql = f"""select uic.index_name as 名, '"' || uic.column_name || '" ' || uic.DESCEND as 字段,ui.uniqueness as 索引类型 
+        from 
+        (select index_name, wm_concat(column_name) as column_name,max(DESCEND) as DESCEND
+        from user_ind_columns where table_name = '{tb_name}' group by index_name) uic
+        left join user_indexes ui on ui.index_name = uic.index_name
+        """
+        result = self.query(sql=sql)
+        return result
+
     def query_check(self, db_name=None, sql=''):
         # 查询语句的检查、注释去除、切分
         result = {'msg': '', 'bad_query': False, 'filtered_sql': sql, 'has_star': False}
@@ -147,9 +158,9 @@ class OracleEngine(EngineBase):
         if re.search(star_patter, sql_lower) is not None:
             keyword_warning += '禁止使用 * 关键词\n'
             result['has_star'] = True
-        # if '+' in sql_lower:
-        #     keyword_warning += '禁止使用 + 关键词\n'
-        #     result['bad_query'] = True
+        if '+' in sql_lower:
+            keyword_warning += '禁止使用 + 关键词\n'
+            result['bad_query'] = True
         if result.get('bad_query') or result.get('has_star'):
             result['msg'] = keyword_warning
         return result
