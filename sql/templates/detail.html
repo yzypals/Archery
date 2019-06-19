@@ -222,12 +222,14 @@
     <!--查看回滚按钮-->
     {% if workflow_detail.is_backup %}
         {% if  workflow_detail.status == 'workflow_finish' or  workflow_detail.status == 'workflow_exception' %}
-            <form action="/rollback/" method="get" style="display:inline-block;">
-                {% csrf_token %}
-                <input type="hidden" name="workflow_id" value="{{ workflow_detail.id }}">
-                <input type="submit" id="btnRollback" onclick="loading(this)" class="btn btn-default"
-                       value="查看回滚SQL"/>
-            </form>
+            {% if workflow_detail.instance.db_type != 'oracle'  %}
+                <form action="/rollback/" method="get" style="display:inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="workflow_id" value="{{ workflow_detail.id }}">
+                    <input type="submit" id="btnRollback" onclick="loading(this)" class="btn btn-default"
+                           value="查看回滚SQL"/>
+                </form>
+            {% endif %}
         {% endif %}
     {% endif %}
     <!--重新修改按钮-->
