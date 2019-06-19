@@ -1,11 +1,9 @@
 # -*- coding: UTF-8 -*-
 import datetime
 import logging
-import re
 import traceback
 
 import simplejson as json
-import sqlparse
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -14,6 +12,7 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from common.config import SysConfig
 from common.utils.const import Const, WorkflowDict
@@ -282,6 +281,61 @@ def passed(request):
 
     return HttpResponseRedirect(reverse('sql:detail', args=(workflow_id,)))
 
+@csrf_exempt
+def passedapi(request):
+    """
+    外部审核审核通过，不执行
+    :param request: request
+    :return:
+    """
+
+    auth_code = request.POST.get('auth_code')
+    workflow_id = int(request.POST.get('workflow_id', 0))
+    if not auth_code or auth_code == '':
+        return HttpResponse("请带上秘钥")
+    else:
+        local_auth_code = SqlWorkflowContent.objects.get(workflow_id=workflow_id).auth_code
+        if auth_code != local_auth_code:
+            context = {'Msg': '秘钥不正确或已审核通过'}
+            return HttpResponse("秘钥不正确或已审核通过")
+
+    audit_remark = request.POST.get('audit_remark', '')
+    if workflow_id == 0:
+        context = {'Msg': 'workflow_id参数为空.'}
+        return HttpResponse('workflow_id参数为空')
+
+    username = request.POST.get('username')
+    user = Users.objects.get(username=username)
+    if Audit.can_review(user, workflow_id, 2) is False:
+        context = {'Msg': '你无权操作当前工单！'}
+        return HttpResponse('你无权操作当前工单')
+
+    # 使用事务保持数据一致性
+    try:
+        with transaction.atomic():
+            # 调用工作流接口审核
+            audit_id = Audit.detail_by_workflow_id(workflow_id=workflow_id,
+                                                   workflow_type=WorkflowDict.workflow_type['sqlreview']).audit_id
+            audit_result = Audit.audit(audit_id, WorkflowDict.workflow_status['audit_success'],
+                                       user.username, audit_remark)
+
+            # 按照审核结果更新业务表审核状态
+            if audit_result['data']['workflow_status'] == WorkflowDict.workflow_status['audit_success']:
+                # 将流程状态修改为审核通过
+                SqlWorkflow(id=workflow_id, status='workflow_review_pass').save(update_fields=['status'])
+    except Exception as msg:
+        logger.error(f"审核工单报错，错误信息：{traceback.format_exc()}")
+        context = {'Msg': msg}
+        return HttpResponse(msg)
+    else:
+        # 消息通知
+        context = {'Msg': '审核通过！'}
+        sc = SqlWorkflowContent.objects.get(workflow_id=workflow_id)
+        sc.auth_code = ''
+        sc.save()
+        async_task(notify_for_audit, audit_id=audit_id, audit_remark=audit_remark, timeout=60)
+
+    return HttpResponse('审核通过')
 
 def execute(request):
     """

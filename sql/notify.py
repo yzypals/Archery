@@ -23,7 +23,7 @@ def notify_for_audit(audit_id, **kwargs):
     """
     # 判断是否开启消息通知，未开启直接返回
     sys_config = SysConfig()
-    if not sys_config.get('mail') and not sys_config.get('ding'):
+    if not sys_config.get('mail') and not sys_config.get('ding') and not sys_config.get('qweixin'):
         logger.info('未开启消息通知，可在系统设置中开启')
         return None
     # 获取审核信息
@@ -40,6 +40,7 @@ def notify_for_audit(audit_id, **kwargs):
     workflow_from = audit_detail.create_user_display
     group_name = audit_detail.group_name
     webhook_url = ResourceGroup.objects.get(group_id=audit_detail.group_id).ding_webhook
+    qweixin_url = sys_config.get('qweixin_url')
 
     # 获取当前审批和审批流程
     workflow_auditors, current_workflow_auditors = Audit.review_info(audit_detail.workflow_id,
@@ -52,17 +53,15 @@ def notify_for_audit(audit_id, **kwargs):
         instance = workflow_detail.instance.instance_name
         db_name = ''
         if workflow_detail.priv_type == 1:
-            workflow_content = '''数据库清单：{}\n授权截止时间：{}\n结果集：{}\n'''.format(
+            workflow_content = '''数据库清单：{}\n授权截止时间：{}\n'''.format(
                 workflow_detail.db_list,
-                datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'),
-                workflow_detail.limit_num)
+                datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'))
         elif workflow_detail.priv_type == 2:
             db_name = workflow_detail.db_list
-            workflow_content = '''数据库：{}\n表清单：{}\n授权截止时间：{}\n结果集：{}\n'''.format(
+            workflow_content = '''数据库：{}\n表清单：{}\n授权截止时间：{}\n'''.format(
                 workflow_detail.db_list,
                 workflow_detail.table_list,
-                datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'),
-                workflow_detail.limit_num)
+                datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'))
         else:
             workflow_content = ''
     elif workflow_type == WorkflowDict.workflow_type['sqlreview']:
@@ -141,6 +140,7 @@ def notify_for_audit(audit_id, **kwargs):
 
     # 处理接收人信息
     msg_to_email = [user.email for user in msg_to if user.email]
+    msg_to_qweixin = [user.username for user in msg_to]
     # 发送通知
     msg_sender = MsgSender()
     if sys_config.get('mail'):
@@ -148,6 +148,8 @@ def notify_for_audit(audit_id, **kwargs):
     if sys_config.get('ding'):
         if webhook_url:
             msg_sender.send_ding(webhook_url, msg_title + '\n' + msg_content)
+    if sys_config.get('qweixin'):
+        msg_sender.send_qweixin(qweixin_url, msg_to_qweixin, workflow_type, workflow_id, status,msg_title + '\n' + msg_content)
 
 
 def notify_for_execute(workflow):

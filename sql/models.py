@@ -218,6 +218,7 @@ class SqlWorkflowContent(models.Model):
     sql_content = models.TextField('具体sql内容')
     review_content = models.TextField('自动审核内容的JSON格式')
     execute_result = models.TextField('执行结果的JSON格式', blank=True)
+    auth_code = models.CharField('验证码', max_length=16, blank=True, default='')
 
     def __str__(self):
         return self.workflow.workflow_name
@@ -353,6 +354,7 @@ class QueryPrivilegesApply(models.Model):
     audit_auth_groups = models.CharField('审批权限组列表', max_length=255)
     create_time = models.DateTimeField(auto_now_add=True)
     sys_time = models.DateTimeField(auto_now=True)
+    auth_code = models.CharField('验证码', max_length=16, blank=True, default='')
 
     def __int__(self):
         return self.apply_id

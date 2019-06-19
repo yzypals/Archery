@@ -81,7 +81,7 @@ urlpatterns = [
     path('instance/users/', instance.users),
     path('instance/schemasync/', instance.schemasync),
     path('instance/instance_resource/', instance.instance_resource),
-    path('instance/describetable/', instance.describe),
+    path('instance/describe<str:resource>/', instance.describe),
 
     path('param/list/', instance.param_list),
     path('param/history/', instance.param_history),
@@ -111,4 +111,7 @@ urlpatterns = [
     path('db_diagnostic/kill_session/', db_diagnostic.kill_session),
     path('db_diagnostic/tablesapce/', db_diagnostic.tablesapce),
     path('db_diagnostic/trxandlocks/', db_diagnostic.trxandlocks),
+
+    path('openapi/passed/', sql_workflow.passedapi),
+    path('openapi/query/privaudit/', sql.query_privileges.query_priv_auditapi),
 ]

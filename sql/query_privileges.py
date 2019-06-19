@@ -17,13 +17,14 @@ from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
 from django_q.tasks import async_task
 
 from common.config import SysConfig
 from common.utils.const import WorkflowDict
 from common.utils.extend_json_encoder import ExtendJSONEncoder
 from sql.engines.inception import InceptionEngine
-from sql.models import QueryPrivilegesApply, QueryPrivileges, Instance, ResourceGroup
+from sql.models import QueryPrivilegesApply, QueryPrivileges, Instance, ResourceGroup, Users
 from sql.notify import notify_for_audit
 from sql.utils.resource_group import user_groups, user_instances
 from sql.utils.workflow_audit import Audit
@@ -79,7 +80,7 @@ def query_priv_check(user, instance, db_name, sql_content, limit_num):
     except Exception as msg:
         # 表权限校验失败再次校验库权限
         # 先获取查询语句涉及的库
-        if instance.db_type in ['redis', 'mssql']:
+        if instance.db_type in ['redis', 'mssql', 'oracle']:
             dbs = [db_name]
         else:
             dbs = [i['schema'].strip('`') for i in extract_tables(sql_content) if i['schema'] is not None]
@@ -351,7 +352,6 @@ def query_priv_modify(request):
         privilege.save(update_fields=['valid_date', 'limit_num'])
         return HttpResponse(json.dumps(result), content_type='application/json')
 
-
 @permission_required('sql.query_review', raise_exception=True)
 def query_priv_audit(request):
     """
@@ -396,6 +396,64 @@ def query_priv_audit(request):
         async_task(notify_for_audit, audit_id=audit_id, audit_remark=audit_remark, timeout=60)
 
     return HttpResponseRedirect(reverse('sql:queryapplydetail', args=(apply_id,)))
+
+@csrf_exempt
+def query_priv_auditapi(request):
+    """
+    查询权限审核
+    :param request:
+    :return:
+    """
+    # 获取用户信息
+    auth_code = request.POST.get('auth_code')
+    username = request.POST.get('username')
+    user = Users.objects.get(username=username)
+    apply_id = int(request.POST['workflow_id'])
+    audit_status = 1
+    audit_remark = request.POST.get('audit_remark')
+
+    if not auth_code or auth_code == '':
+        return HttpResponse("请带上秘钥")
+    else:
+        local_auth_code = QueryPrivilegesApply.objects.get(apply_id=apply_id).auth_code
+        if auth_code != local_auth_code:
+            context = {'Msg': '秘钥不正确或已审核通过'}
+            return HttpResponse("秘钥不正确或已审核通过")
+
+    if audit_remark is None:
+        audit_remark = ''
+
+    if Audit.can_review(user, apply_id, 1) is False:
+        context = {'errMsg': '你无权操作当前工单！'}
+        return HttpResponse('你无权操作当前工单')
+
+    # 使用事务保持数据一致性
+    try:
+        with transaction.atomic():
+            audit_id = Audit.detail_by_workflow_id(workflow_id=apply_id,
+                                                   workflow_type=WorkflowDict.workflow_type['query']).audit_id
+
+            # 调用工作流接口审核
+            audit_result = Audit.audit(audit_id, audit_status, user.username, audit_remark)
+
+            # 按照审核结果更新业务表审核状态
+            audit_detail = Audit.detail(audit_id)
+            if audit_detail.workflow_type == WorkflowDict.workflow_type['query']:
+                # 更新业务表审核状态,插入权限信息
+                _query_apply_audit_call_back(audit_detail.workflow_id, audit_result['data']['workflow_status'])
+
+    except Exception as msg:
+        logger.error(traceback.format_exc())
+        context = {'errMsg': msg}
+        return HttpResponse(msg)
+    else:
+        # 消息通知
+        sc = QueryPrivilegesApply.objects.get(apply_id=apply_id)
+        sc.auth_code = ''
+        sc.save()
+        async_task(notify_for_audit, audit_id=audit_id, audit_remark=audit_remark, timeout=60)
+
+    return HttpResponse('审核通过')
 
 
 def _table_ref(sql_content, instance, db_name):

@@ -52,15 +52,15 @@
                                         data-placeholder="查看表结构:" required>
                                 </select>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="display: none;">
                                 <select id="limit_num" name="limit_num"
                                         class="form-control selectpicker show-tick bs-select-hidden"
                                         data-placeholder="返回行数:" required>
                                     <option value="is-empty" disabled="">返回行数:</option>
-                                    <option value=100 selected="selected">100</option>
+                                    <option value=100>100</option>
                                     <option value=500>500</option>
                                     <option value=1000>1000</option>
-                                    <option value=0>max(最大限制行数)</option>
+                                    <option value=0 selected="selected">max(最大限制行数)</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -471,7 +471,7 @@
         );
 
         // 展示数据
-        function display_data(data) {
+        function display_data(data, index) {
             var result = data.data;
             //获取当前的标签页,如果当前不在执行结果页，则默认新增一个页面
             var active_li_id = sessionStorage.getItem('active_li_id');
@@ -485,6 +485,7 @@
                     } else {
                         var tb_name = result['full_sql'].match(/^show\s+create\s+table\s+(.*);/)[1];
                     }
+                    tb_name+=index||""
                     if (tb_name !== active_li_title) {
                         tab_add(tb_name);
                     }
@@ -537,7 +538,7 @@
                             escape: true,
                             data: result['rows'],
                             columns: columns,
-                            showExport: true,
+                            showExport: false,
                             exportDataType: "all",
                             exportTypes: ['json', 'sql', 'csv', 'txt', 'xml', 'xlsx'],
                             exportOptions: {
@@ -656,6 +657,13 @@
                 $("#div-schema_name").show()
             } else {
                 $("#div-schema_name").hide()
+            }
+
+            //Oracle掩藏执行计划按钮
+            if (optgroup === "Oracle") {
+                $("#btn-explain").hide()
+            } else {
+                $("#btn-explain").show()
             }
 
             sessionStorage.setItem('sql_query_instance_name', $("#instance_name").val());
@@ -803,6 +811,7 @@
 
         //获取表结构
         $("#table_name").change(function () {
+            var optgroup = $('#instance_name :selected').parent().attr('label');
             $.ajax({
                 type: "post",
                 url: "/instance/describetable/",
@@ -817,6 +826,24 @@
                     data.is_describe = true;
                     display_data(data);
                 },
+                complete : function () {
+                    if (optgroup === "Oracle") {
+                        $.ajax({
+                            type: "post",
+                            url: "/instance/describeindex/",
+                            dataType: "json",
+                            data: {
+                                instance_name: $("#instance_name").val(),
+                                db_name: $("#db_name").val(),
+                                tb_name: $("#table_name").val()
+                            },
+                            success: function (data) {
+                                data.is_describe = true;
+                                display_data(data," 索引");
+                            }
+                        });
+                    };
+                }
             });
             //自动补全提示
             setColumnsCompleteData()

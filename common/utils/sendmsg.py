@@ -11,6 +11,9 @@ from email.mime.text import MIMEText
 from email.utils import formataddr
 
 from common.config import SysConfig
+from common.utils.const import WorkflowDict
+from sql.models import SqlWorkflowContent, QueryPrivilegesApply
+from sql.utils.mk_authcode import get_authcode
 
 logger = logging.getLogger('default')
 
@@ -136,3 +139,40 @@ class MsgSender(object):
                             返回错误信息:{}
                             请求url:{}
                             请求data:{}""".format(r_json['errcode'], r_json['errmsg'], url, data))
+
+    @staticmethod
+    def send_qweixin(url, usernames, workflow_type, workflow_id, status, content):
+        """
+        发送企业微信消息
+        :param url:
+        :param usernames:
+        :param workflow_id: sql查询申请表的apply_id或者上线工单详情表的workflow_id
+        :param content:
+        :return:
+        """
+        if status == WorkflowDict.workflow_status['audit_wait']:
+            local_auth_code = get_authcode(8)
+            if workflow_type == WorkflowDict.workflow_type['sqlreview']:
+                sc = SqlWorkflowContent.objects.get(workflow_id=workflow_id)
+            elif workflow_type == WorkflowDict.workflow_type['query']:
+                sc = QueryPrivilegesApply.objects.get(apply_id=workflow_id)
+            sc.auth_code = local_auth_code
+            sc.save()
+            data = {
+                "users": usernames,
+                "content": "{}".format(content),
+                "workflow_id": workflow_id,
+                "auth_code": local_auth_code,
+                "source_platform": "dzgsql",
+                "workflow_type": workflow_type
+            }
+            url = url + '/fmsadmin/callback/sendWebchatTaskMsg'
+        else:
+            data = {
+                "users": usernames,
+                "content": "{}".format(content),
+                "source_platform": "dzgsql"
+            }
+            url = url + '/fmsadmin/callback/sendWebchatMsg'
+
+        requests.post(url=url, data=data)
