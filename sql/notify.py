@@ -53,13 +53,11 @@ def notify_for_audit(audit_id, **kwargs):
         instance = workflow_detail.instance.instance_name
         db_name = ''
         if workflow_detail.priv_type == 1:
-            workflow_content = '''数据库清单：{}\n授权截止时间：{}\n'''.format(
-                workflow_detail.db_list,
+            workflow_content = '''授权截止时间：{}\n'''.format(
                 datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'))
         elif workflow_detail.priv_type == 2:
             db_name = workflow_detail.db_list
-            workflow_content = '''数据库：{}\n表清单：{}\n授权截止时间：{}\n'''.format(
-                workflow_detail.db_list,
+            workflow_content = '''表清单：{}\n授权截止时间：{}\n'''.format(
                 workflow_detail.table_list,
                 datetime.datetime.strftime(workflow_detail.valid_date, '%Y-%m-%d %H:%M:%S'))
         else:
@@ -69,8 +67,17 @@ def notify_for_audit(audit_id, **kwargs):
         workflow_detail = SqlWorkflow.objects.get(pk=workflow_id)
         instance = workflow_detail.instance.instance_name
         db_name = workflow_detail.db_name
+        run_date_start = workflow_detail.run_date_start .strftime('%Y-%m-%d %H:%M:%S') \
+            if workflow_detail.run_date_start else "不限制"
+        run_date_end = workflow_detail.run_date_end.strftime('%Y-%m-%d %H:%M:%S') \
+            if workflow_detail.run_date_end else "不限制"
         workflow_content = re.sub('[\r\n\f]{2,}', '\n',
-                                  workflow_detail.sqlworkflowcontent.sql_content[0:500].replace('\r', ''))
+                                  workflow_detail.sqlworkflowcontent.sql_content.replace('\r', ''))
+        workflow_content =  '''\n可执行起始时间:{}\n可执行结束时间:{}\nsql语句:{}'''.format(
+            run_date_start,
+            run_date_end,
+            workflow_content
+        )
     else:
         raise Exception('工单类型不正确')
 
@@ -81,16 +88,12 @@ def notify_for_audit(audit_id, **kwargs):
         auth_group_names = Group.objects.get(id=audit_detail.current_audit).name
         msg_to = auth_group_users([auth_group_names], audit_detail.group_id)
         # 消息内容
-        msg_content = '''发起时间：{}\n发起人：{}\n组：{}\n目标实例：{}\n数据库：{}\n审批流程：{}\n当前审批：{}\n工单名称：{}\n工单地址：{}\n工单详情预览：{}\n'''.format(
-            workflow_detail.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+        msg_content = '''发起人：{}\n组：{}\n目标实例：{}\n数据库：{}\n工单名称：{}\n工单详情：{}\n'''.format(
             workflow_from,
             group_name,
             instance,
             db_name,
-            workflow_auditors,
-            current_workflow_auditors,
             workflow_title,
-            workflow_url,
             workflow_content)
     elif status == WorkflowDict.workflow_status['audit_success']:  # 审核通过
         msg_title = "[{}]工单审核通过#{}".format(workflow_type_display, audit_id)
