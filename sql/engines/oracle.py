@@ -130,8 +130,8 @@ class OracleEngine(EngineBase):
         sql = f"""select uic.index_name as 名, '"' || uic.column_name || '" ' || uic.DESCEND as 字段,ui.uniqueness as 索引类型 
         from 
         (select index_name, wm_concat(column_name) as column_name,max(DESCEND) as DESCEND
-        from user_ind_columns where table_name = '{tb_name}' group by index_name) uic
-        left join user_indexes ui on ui.index_name = uic.index_name
+        from all_ind_columns where table_name = '{tb_name}' group by index_name) uic
+        left join all_indexes ui on ui.index_name = uic.index_name
         """
         result = self.query(sql=sql)
         return result
