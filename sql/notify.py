@@ -151,7 +151,22 @@ def notify_for_audit(audit_id, **kwargs):
         if webhook_url:
             msg_sender.send_ding(webhook_url, msg_title + '\n' + msg_content)
     if sys_config.get('qweixin'):
-        msg_sender.send_qweixin(qweixin_url, msg_to_qweixin, workflow_type, workflow_id, status,msg_title + '\n' + msg_content)
+        if status == WorkflowDict.workflow_status['audit_wait']:
+            if len(msg_title  + msg_content) > 512:
+                msg_content = '''发起人：{}\n组：{}\n目标实例：{}\n数据库：{}\n工单名称：{}\n'''.format(
+                    workflow_from,
+                    group_name,
+                    instance,
+                    db_name,
+                    workflow_title
+                )
+                msg_content_details = '''工单详情：{}\n'''.format(workflow_content)
+                msg_sender.send_qweixin(qweixin_url, msg_to_qweixin, workflow_type, workflow_id, status,
+                                        msg_title + '\n' + msg_content)
+                msg_sender.send_qweixin(qweixin_url, msg_to_qweixin, workflow_type, workflow_id, 1,
+                                        msg_title + '\n' + msg_content_details)
+        else:
+            msg_sender.send_qweixin(qweixin_url, msg_to_qweixin, workflow_type, workflow_id, status,msg_title + '\n' + msg_content)
 
 
 def notify_for_execute(workflow):

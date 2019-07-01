@@ -8,4 +8,3 @@ def get_authcode(digit):
         passwd = ''.join(tmp)
         if re.search('[0-9]', passwd) and re.search('[A-Z]', passwd) and re.search('[a-z]', passwd):
             return passwd
-

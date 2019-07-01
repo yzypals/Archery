@@ -13,7 +13,7 @@ from email.utils import formataddr
 from common.config import SysConfig
 from common.utils.const import WorkflowDict
 from sql.models import SqlWorkflowContent, QueryPrivilegesApply
-from sql.utils.mk_authcode import get_authcode
+from sql.utils.mycommon import get_authcode
 
 logger = logging.getLogger('default')
 
