@@ -296,18 +296,15 @@ def passedapi(request):
     else:
         local_auth_code = SqlWorkflowContent.objects.get(workflow_id=workflow_id).auth_code
         if auth_code != local_auth_code:
-            context = {'Msg': '秘钥不正确或已审核通过'}
             return HttpResponse("秘钥不正确或已审核通过")
 
     audit_remark = request.POST.get('audit_remark', '')
     if workflow_id == 0:
-        context = {'Msg': 'workflow_id参数为空.'}
         return HttpResponse('workflow_id参数为空')
 
     username = request.POST.get('username')
     user = Users.objects.get(username=username)
     if Audit.can_review(user, workflow_id, 2) is False:
-        context = {'Msg': '你无权操作当前工单！'}
         return HttpResponse('你无权操作当前工单')
 
     # 使用事务保持数据一致性
@@ -325,17 +322,15 @@ def passedapi(request):
                 SqlWorkflow(id=workflow_id, status='workflow_review_pass').save(update_fields=['status'])
     except Exception as msg:
         logger.error(f"审核工单报错，错误信息：{traceback.format_exc()}")
-        context = {'Msg': msg}
         return HttpResponse(msg)
     else:
         # 消息通知
-        context = {'Msg': '审核通过！'}
         sc = SqlWorkflowContent.objects.get(workflow_id=workflow_id)
         sc.auth_code = ''
         sc.save()
         async_task(notify_for_audit, audit_id=audit_id, audit_remark=audit_remark, timeout=60)
 
-    return HttpResponse('审核通过')
+    return HttpResponse('''工单{}审核通过'''.format(audit_id))
 
 def execute(request):
     """
