@@ -88,6 +88,7 @@ urlpatterns = [
     path('param/edit/', instance.param_edit),
 
     path('query/', query.query),
+    path('oracleexplain/',query.oracleexplain),
     path('query/querylog/', query.querylog),
     path('query/explain/', sql.sql_optimize.explain),
     path('query/applylist/', sql.query_privileges.query_priv_apply_list),

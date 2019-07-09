@@ -136,6 +136,58 @@ class OracleEngine(EngineBase):
         result = self.query(sql=sql)
         return result
 
+    def explain_sql(self, db_name, sql, close_conn=True):
+        sql = f"""EXPLAIN PLAN FOR {sql}"""
+        sqlgetexplain= f"""
+        SELECT
+            LPAD( ' ', LEVEL - 1 ) || OPERATION || ' (' || OPTIONS || ')' "Operation",
+            OBJECT_NAME "Object",
+            OPTIMIZER "Optimizer",
+            COST "Cost",
+            CARDINALITY "Cardinality",
+            BYTES "Bytes",
+            PARTITION_START "Partition Start",
+            PARTITION_ID "Partition ID",
+            ACCESS_PREDICATES "Access Predicates",
+            FILTER_PREDICATES "Filter Predicates" 
+        FROM
+            PLAN_TABLE START WITH ID = 0 CONNECT BY PRIOR ID = PARENT_ID"""
+
+        result_set = ResultSet(full_sql=sql)
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            if db_name:
+                cursor.execute(f"ALTER SESSION SET CURRENT_SCHEMA = {db_name}")
+            cursor.execute(sql)
+            cursor.execute(sqlgetexplain)
+            fields = cursor.description
+            rows = cursor.fetchall()
+
+            #将开头空格转成@
+            rows = [list(x) for x in rows]
+            i = 0
+            while i < len(rows):
+                j = 0
+                s = rows[i][0]
+                while s[j].isspace():
+                    j=j+1
+                ss=s[0:j].replace(' ','@')
+                rows[i][0] = ss + s[j:]
+                i=i+1
+
+            result_set.column_list = [i[0] for i in fields] if fields else []
+            result_set.rows = [tuple(x) for x in rows]
+            result_set.affected_rows = len(result_set.rows)
+        except Exception as e:
+            logger.error(f"Oracle 语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}")
+            result_set.error = str(e)
+        finally:
+            if close_conn:
+                self.close()
+        return result_set
+
+
     def query_check(self, db_name=None, sql=''):
         # 查询语句的检查、注释去除、切分
         result = {'msg': '', 'bad_query': False, 'filtered_sql': sql, 'has_star': False}

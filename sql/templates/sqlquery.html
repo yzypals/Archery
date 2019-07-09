@@ -583,7 +583,10 @@
 
         //将数据通过ajax提交给后端进行检查
         function sqlquery(sql) {
+            var optgroup = $('#instance_name :selected').parent().attr('label');
             var select_sqlContent = editor.session.getTextRange(editor.getSelectionRange());
+            var url = "/query/";
+            var type = "";
             if (select_sqlContent) {
                 sqlContent = select_sqlContent
             } else {
@@ -592,16 +595,19 @@
             }
             //查看执行计划
             if (sql === 'explain') {
-                sqlContent = 'explain ' + sqlContent
-            }
-            //查看表结构
-            else if (sql === 'show create table') {
-                sqlContent = "show create table " + $("#table_name").val() + ";"
+                if (optgroup === "Oracle") {
+                    var url = "/oracleexplain/";
+                    type = "plan"
+                    sqlContent = sqlContent
+                } else {
+                    var url = "/query/";
+                    sqlContent = 'explain ' + sqlContent
+                }
             }
             //提交请求
             $.ajax({
                 type: "post",
-                url: "/query/",
+                url: url,
                 dataType: "json",
                 data: {
                     instance_name: $("#instance_name").val(),
@@ -615,8 +621,8 @@
                     $('input[type=button]').removeClass('disabled');
                     $('input[type=button]').prop('disabled', false);
                 },
-                success: function (data) {
-                    display_data(data)
+                success: function (data,type) {
+                    display_data(data,type)
                 },
                 error: function (XMLHttpRequest, textStatus, errorThrown) {
                     alert(errorThrown);
@@ -645,6 +651,12 @@
                 $("#btn-format").attr('disabled', false);
                 $("#btn-explain").attr('disabled', false);
                 $("#nav-tabs a:last").tab('show');
+            } else if (optgroup === "Oracle") {
+                $("#div-table_name").show();
+                $("#redis_help_tab").remove();
+                $("#btn-format").attr('disabled', false);
+                $("#btn-explain").attr('disabled', false);
+                $("#nav-tabs a:last").tab('show');
             } else {
                 $("#div-table_name").show();
                 $("#redis_help_tab").remove();
@@ -659,12 +671,6 @@
                 $("#div-schema_name").hide()
             }
 
-            //Oracle掩藏执行计划按钮
-            if (optgroup === "Oracle") {
-                $("#btn-explain").hide()
-            } else {
-                $("#btn-explain").show()
-            }
 
             sessionStorage.setItem('sql_query_instance_name', $("#instance_name").val());
             //将数据通过ajax提交给获取db_name
