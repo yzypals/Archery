@@ -356,25 +356,43 @@ class TestMysql(TestCase):
         masking_result = new_engine.query_masking(db_name='archery', sql='explain select 1', resultset=query_result)
         self.assertEqual(masking_result, query_result)
 
-    def test_execute_check_select_sql(self):
+    @patch('sql.engines.mysql.InceptionEngine')
+    def test_execute_check_select_sql(self, _inception_engine):
         sql = 'select * from user'
+        inc_row = ReviewResult(id=1,
+                               errlevel=0,
+                               stagestatus='Audit completed',
+                               errormessage='None',
+                               sql=sql,
+                               affected_rows=0,
+                               execute_time=0, )
         row = ReviewResult(id=1, errlevel=2,
                            stagestatus='驳回不支持语句',
                            errormessage='仅支持DML和DDL语句，查询语句请使用SQL查询功能！',
                            sql=sql)
+        _inception_engine.return_value.execute_check.return_value = ReviewSet(full_sql=sql, rows=[inc_row])
         new_engine = MysqlEngine(instance=self.ins1)
         check_result = new_engine.execute_check(db_name='archery', sql=sql)
         self.assertIsInstance(check_result, ReviewSet)
         self.assertEqual(check_result.rows[0].__dict__, row.__dict__)
 
-    def test_execute_check_critical_sql(self):
+    @patch('sql.engines.mysql.InceptionEngine')
+    def test_execute_check_critical_sql(self, _inception_engine):
         self.sys_config.set('critical_ddl_regex', '^|update')
         self.sys_config.get_all_config()
         sql = 'update user set id=1'
+        inc_row = ReviewResult(id=1,
+                               errlevel=0,
+                               stagestatus='Audit completed',
+                               errormessage='None',
+                               sql=sql,
+                               affected_rows=0,
+                               execute_time=0, )
         row = ReviewResult(id=1, errlevel=2,
                            stagestatus='驳回高危SQL',
                            errormessage='禁止提交匹配' + '^|update' + '条件的语句！',
                            sql=sql)
+        _inception_engine.return_value.execute_check.return_value = ReviewSet(full_sql=sql, rows=[inc_row])
         new_engine = MysqlEngine(instance=self.ins1)
         check_result = new_engine.execute_check(db_name='archery', sql=sql)
         self.assertIsInstance(check_result, ReviewSet)
@@ -462,6 +480,18 @@ class TestMysql(TestCase):
         sqlsha1 = 'xxxxx'
         new_engine = MysqlEngine(instance=self.ins1)
         new_engine.osc_control(sqlsha1=sqlsha1, command=command)
+
+    @patch.object(MysqlEngine, 'query')
+    def test_kill_connection(self, _query):
+        new_engine = MysqlEngine(instance=self.ins1)
+        new_engine.kill_connection(100)
+        _query.assert_called_once_with(sql="kill 100")
+
+    @patch.object(MysqlEngine, 'query')
+    def test_seconds_behind_master(self, _query):
+        new_engine = MysqlEngine(instance=self.ins1)
+        new_engine.seconds_behind_master()
+        _query.assert_called_once_with(sql="show slave status")
 
 
 class TestRedis(TestCase):
@@ -952,7 +982,7 @@ class TestGoInception(TestCase):
         SqlWorkflow.objects.all().delete()
         SqlWorkflowContent.objects.all().delete()
 
-    @patch('pymysql.connect')
+    @patch('MySQLdb.connect')
     def test_get_connection(self, _connect):
         new_engine = GoInceptionEngine()
         new_engine.get_connection()
@@ -989,18 +1019,18 @@ class TestGoInception(TestCase):
         execute_result = new_engine.execute(workflow=self.wf)
         self.assertIsInstance(execute_result, ReviewSet)
 
-    @patch('pymysql.connect.cursor.execute')
-    @patch('pymysql.connect.cursor')
-    @patch('pymysql.connect')
+    @patch('MySQLdb.connect.cursor.execute')
+    @patch('MySQLdb.connect.cursor')
+    @patch('MySQLdb.connect')
     def test_query(self, _conn, _cursor, _execute):
         _conn.return_value.cursor.return_value.fetchall.return_value = [(1,)]
         new_engine = GoInceptionEngine()
         query_result = new_engine.query(db_name=0, sql='select 1', limit_num=100)
         self.assertIsInstance(query_result, ResultSet)
 
-    @patch('pymysql.connect.cursor.execute')
-    @patch('pymysql.connect.cursor')
-    @patch('pymysql.connect')
+    @patch('MySQLdb.connect.cursor.execute')
+    @patch('MySQLdb.connect.cursor')
+    @patch('MySQLdb.connect')
     def test_query_not_limit(self, _conn, _cursor, _execute):
         _conn.return_value.cursor.return_value.fetchall.return_value = [(1,)]
         new_engine = GoInceptionEngine(instance=self.ins)

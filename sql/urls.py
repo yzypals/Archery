@@ -6,7 +6,8 @@ from django.views.i18n import JavaScriptCatalog
 import sql.query_privileges
 import sql.sql_optimize
 from common import auth, config, workflow, dashboard, check
-from sql import views, sql_workflow, sql_analyze, query, slowlog, instance, db_diagnostic, resource_group, binlog
+from sql import views, sql_workflow, sql_analyze, query, slowlog, instance, db_diagnostic, resource_group, binlog, \
+    data_dictionary
 from sql.utils import tasks
 
 urlpatterns = [
@@ -75,6 +76,7 @@ urlpatterns = [
     path('group/instances/', resource_group.instances),
     path('group/unassociated/', resource_group.unassociated_objects),
     path('group/auditors/', resource_group.auditors),
+    path('group/changeauditors/', resource_group.changeauditors),
     path('group/user_all_instances/', resource_group.user_all_instances),
 
     path('instance/list/', instance.lists),
@@ -82,6 +84,10 @@ urlpatterns = [
     path('instance/schemasync/', instance.schemasync),
     path('instance/instance_resource/', instance.instance_resource),
     path('instance/describe<str:resource>/', instance.describe),
+
+    path('data_dictionary/', views.data_dictionary),
+    path('data_dictionary/table_list/', data_dictionary.table_list),
+    path('data_dictionary/table_info/', data_dictionary.table_info),
 
     path('param/list/', instance.param_list),
     path('param/history/', instance.param_history),
