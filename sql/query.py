@@ -11,13 +11,14 @@ from django.core import serializers
 from django.db import connection, OperationalError
 from django.db.models import Q
 from django.http import HttpResponse
+from django_q.tasks import async_task, fetch
 from common.config import SysConfig
 from common.utils.extend_json_encoder import ExtendJSONEncoder
 from common.utils.timer import FuncTimer
 from sql.query_privileges import query_priv_check
 from sql.utils.tasks import add_kill_conn_schedule, del_schedule
 from .models import QueryLog, Instance
-from sql.engines import get_engine
+from sql.engines import get_engine, ResultSet
 
 logger = logging.getLogger('default')
 
@@ -33,6 +34,7 @@ def query(request):
     sql_content = request.POST.get('sql_content')
     db_name = request.POST.get('db_name')
     limit_num = int(request.POST.get('limit_num', 0))
+    schedule_name = request.POST.get('schedule_name',None)
     user = request.user
 
     result = {'status': 0, 'msg': 'ok', 'data': {}}
@@ -91,7 +93,10 @@ def query(request):
             run_date = (datetime.datetime.now() + datetime.timedelta(seconds=max_execution_time))
             add_kill_conn_schedule(schedule_name, run_date, instance.id, thread_id)
         with FuncTimer() as t:
-            query_result = query_engine.query(db_name, sql_content, limit_num)
+            if instance.db_type == 'pgsql':
+                query_result = query_engine.query(db_name, sql_content, limit_num, schedule_name=schedule_name)
+            else:
+                query_result = query_engine.query(db_name, sql_content, limit_num)
         query_result.query_time = t.cost
         # 返回查询结果后删除schedule
         if thread_id:

@@ -663,7 +663,14 @@
                 $("#btn-format").attr('disabled', false);
                 $("#btn-explain").attr('disabled', false);
                 $("#nav-tabs a:last").tab('show');
-            } else {
+            } else if (optgroup === "PgSQL") {
+                $("#div-table_name").show();
+                $("#redis_help_tab").remove();
+                $("#btn-format").attr('disabled', false);
+                $("#btn-explain").attr('disabled', true);
+                $("#btn-explain").hide();
+                $("#nav-tabs a:last").tab('show');
+            }else {
                 $("#div-table_name").show();
                 $("#redis_help_tab").remove();
                 $("#btn-format").attr('disabled', false);
