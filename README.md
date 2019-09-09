@@ -2,6 +2,7 @@
 
 # <a href="http://139.199.0.191/" target="_blank" rel="noopener noreferrer">Archery</a> 
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/94e8587e507f4565a1ea5ea21fd94c32)](https://app.codacy.com/app/hhyo/Archery?utm_source=github.com&utm_medium=referral&utm_content=hhyo/Archery&utm_campaign=Badge_Grade_Dashboard)
 [![Build Status](https://travis-ci.org/hhyo/Archery.svg?branch=master)](https://travis-ci.org/hhyo/Archery)
 [![Release](https://img.shields.io/github/release/hhyo/archery.svg)](https://github.com/hhyo/archery/releases/)
 [![codecov](https://codecov.io/gh/hhyo/archery/branch/master/graph/badge.svg)](https://codecov.io/gh/hhyo/archery)
@@ -113,7 +114,6 @@ python manage.py test -v 3
 ### 功能依赖
 - 可视化 [pyecharts](https://github.com/pyecharts/pyecharts)
 - MySQL审核/执行/备份 [goInception](https://github.com/hanchuanchuan/goInception)|[inception](https://github.com/hhyo/inception)
-- 数据库审核 [Themis](https://github.com/CreditEaseDBA/Themis)
 - MySQL索引优化 [SQLAdvisor](https://github.com/Meituan-Dianping/SQLAdvisor)
 - SQL优化/压缩 [SOAR](https://github.com/XiaoMi/soar)
 - Binlog2SQL [binlog2sql](https://github.com/danfengcao/binlog2sql)

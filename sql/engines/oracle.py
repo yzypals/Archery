@@ -75,7 +75,7 @@ class OracleEngine(EngineBase):
         获取模式列表
         :return:
         """
-        result = self.query(sql="select username from sys.dba_users")
+        result = self.query(sql="SELECT username FROM all_users")
         sysschema = (
             'AUD_SYS', 'ANONYMOUS', 'APEX_030200', 'APEX_PUBLIC_USER', 'APPQOSSYS', 'BI USERS', 'CTXSYS', 'DBSNMP',
             'DIP USERS', 'EXFSYS', 'FLOWS_FILES', 'HR USERS', 'IX USERS', 'MDDATA', 'MDSYS', 'MGMT_VIEW', 'OE USERS',
@@ -88,15 +88,7 @@ class OracleEngine(EngineBase):
 
     def get_all_tables(self, db_name):
         """获取table 列表, 返回一个ResultSet"""
-        sql = f"""select
-        TABLE_NAME
-        from dba_tab_privs
-        where grantee in ('{db_name}')
-        union
-        select
-        OBJECT_NAME
-        from dba_objects
-        WHERE OWNER IN ('{db_name}') and object_type in ('TABLE')
+        sql = f"""SELECT table_name FROM all_tables WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') AND OWNER = '{db_name}' AND IOT_NAME IS NULL AND DURATION IS NULL
         """
         result = self.query(sql=sql)
         tb_list = [row[0] for row in result.rows if row[0] not in ['test']]
@@ -252,7 +244,7 @@ class OracleEngine(EngineBase):
             result_set.rows = [tuple(x) for x in rows]
             result_set.affected_rows = len(result_set.rows)
         except Exception as e:
-            logger.error(f"Oracle 语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}")
+            logger.warning(f"Oracle 语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}")
             result_set.error = str(e)
         finally:
             if close_conn:
@@ -345,7 +337,7 @@ class OracleEngine(EngineBase):
                 ))
                 line += 1
         except Exception as e:
-            logger.error(f"Oracle命令执行报错，语句：{statement or sql}， 错误信息：{traceback.format_exc()}")
+            logger.warning(f"Oracle命令执行报错，语句：{statement or sql}， 错误信息：{traceback.format_exc()}")
             execute_result.error = str(e)
             # 追加当前报错语句信息到执行结果中
             execute_result.rows.append(ReviewResult(

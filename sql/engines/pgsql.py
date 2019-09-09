@@ -1,8 +1,8 @@
 # -*- coding: UTF-8 -*-
 """ 
 @author: hhyo、yyukai
-@license: Apache Licence 
-@file: pgsql.py 
+@license: Apache Licence
+@file: pgsql.py
 @time: 2019/03/29
 """
 import re
@@ -46,7 +46,7 @@ class PgSQLEngine(EngineBase):
         获取数据库列表
         :return:
         """
-        result = self.query(sql=f"SELECT datname FROM pg_database;")
+        result = self._query(sql=f"SELECT datname FROM pg_database;")
         db_list = [row[0] for row in result.rows if row[0] not in ['postgres', 'template0', 'template1']]
         result.rows = db_list
         return result
@@ -140,14 +140,13 @@ class PgSQLEngine(EngineBase):
             result['msg'] = 'SQL语句中含有 * '
         return result
 
-    def query(self, db_name=None, sql='', limit_num=0, schema_name=None, close_conn=True):
+    def _query(self, db_name=None, sql='', limit_num=0, schema_name=None, close_conn=True):
         """返回 ResultSet """
         result_set = ResultSet(full_sql=sql)
         try:
             conn = self.get_connection(db_name=db_name)
             cursor = conn.cursor()
             if schema_name:
-                print(schema_name)
                 cursor.execute(f"SET search_path TO {schema_name};")
             cursor.execute(sql)
             effect_row = cursor.rowcount
@@ -161,12 +160,17 @@ class PgSQLEngine(EngineBase):
             result_set.rows = rows
             result_set.affected_rows = effect_row
         except Exception as e:
-            logger.error(f"PgSQL命令执行报错，语句：{sql}， 错误信息：{traceback.format_exc()}")
+            logger.warning(f"PgSQL命令执行报错，语句：{sql}， 错误信息：{traceback.format_exc()}")
             result_set.error = str(e)
         finally:
             if close_conn:
                 self.close()
         return result_set
+
+    def query(self, db_name=None, sql='', limit_num=0, schema_name=None, close_conn=True):
+        if not db_name:
+            raise ValueError('db_name未填写,请检查参数')
+        return self._query(db_name=db_name, sql=sql, limit_num=limit_num, schema_name=schema_name, close_conn=close_conn)
 
     def filter_sql(self, sql='', limit_num=0):
         """不做limit限制"""
@@ -228,7 +232,6 @@ class PgSQLEngine(EngineBase):
         execute_result = ReviewSet(full_sql=sql)
         # 删除注释语句，切分语句，将切换CURRENT_SCHEMA语句增加到切分结果中
         sql = sqlparse.format(sql, strip_comments=True)
-        # split_sql = [f"ALTER SESSION SET CURRENT_SCHEMA = {workflow.db_name};"] + sqlparse.split(sql)
         split_sql = sqlparse.split(sql)
         line = 1
         statement = None
@@ -253,7 +256,7 @@ class PgSQLEngine(EngineBase):
                 ))
                 line += 1
         except Exception as e:
-            logger.error(f"PGSQL命令执行报错，语句：{statement or sql}， 错误信息：{traceback.format_exc()}")
+            logger.warning(f"PGSQL命令执行报错，语句：{statement or sql}， 错误信息：{traceback.format_exc()}")
             execute_result.error = str(e)
             # 追加当前报错语句信息到执行结果中
             execute_result.rows.append(ReviewResult(

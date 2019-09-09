@@ -14,6 +14,7 @@ from sql.engines.mysql import MysqlEngine
 from sql.engines.redis import RedisEngine
 from sql.engines.pgsql import PgSQLEngine
 from sql.engines.oracle import OracleEngine
+from sql.engines.mongo import MongoEngine
 from sql.engines.inception import InceptionEngine, _repair_json_str
 from sql.models import Instance, SqlWorkflow, SqlWorkflowContent
 
@@ -33,7 +34,7 @@ class TestEngineBase(TestCase):
         cls.u1 = User(username='some_user', display='用户1')
         cls.u1.save()
         cls.ins1 = Instance(instance_name='some_ins', type='master', db_type='mssql', host='some_host',
-                            port=1366, user='ins_user', password='some_pass')
+                            port=1366, user='ins_user', password='some_str')
         cls.ins1.save()
         cls.wf1 = SqlWorkflow.objects.create(
             workflow_name='some_name',
@@ -75,7 +76,7 @@ class TestMssql(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ins1 = Instance(instance_name='some_ins', type='slave', db_type='mssql', host='some_host',
-                            port=1366, user='ins_user', password='some_pass')
+                            port=1366, user='ins_user', password='some_str')
         cls.ins1.save()
         cls.engine = MssqlEngine(instance=cls.ins1)
         cls.wf = SqlWorkflow.objects.create(
@@ -219,7 +220,7 @@ class TestMysql(TestCase):
 
     def setUp(self):
         self.ins1 = Instance(instance_name='some_ins', type='slave', db_type='mysql', host='some_host',
-                             port=1366, user='ins_user', password='some_pass')
+                             port=1366, user='ins_user', password='some_str')
         self.ins1.save()
         self.sys_config = SysConfig()
         self.wf = SqlWorkflow.objects.create(
@@ -340,7 +341,37 @@ class TestMysql(TestCase):
         new_engine = MysqlEngine(instance=self.ins1)
         sql_without_limit = 'select user from usertable limit 10'
         check_result = new_engine.filter_sql(sql=sql_without_limit, limit_num=1)
+        self.assertEqual(check_result, 'select user from usertable limit 1;')
+
+    def test_filter_sql_with_limit_min(self):
+        new_engine = MysqlEngine(instance=self.ins1)
+        sql_without_limit = 'select user from usertable limit 10'
+        check_result = new_engine.filter_sql(sql=sql_without_limit, limit_num=100)
         self.assertEqual(check_result, 'select user from usertable limit 10;')
+
+    def test_filter_sql_with_limit_offset(self):
+        new_engine = MysqlEngine(instance=self.ins1)
+        sql_without_limit = 'select user from usertable limit 10 offset 100'
+        check_result = new_engine.filter_sql(sql=sql_without_limit, limit_num=1)
+        self.assertEqual(check_result, 'select user from usertable limit 1;')
+
+    def test_filter_sql_with_limit_nn(self):
+        new_engine = MysqlEngine(instance=self.ins1)
+        sql_without_limit = 'select user from usertable limit 10, 100'
+        check_result = new_engine.filter_sql(sql=sql_without_limit, limit_num=1)
+        self.assertEqual(check_result, 'select user from usertable limit 1;')
+
+    def test_filter_sql_upper(self):
+        new_engine = MysqlEngine(instance=self.ins1)
+        sql_without_limit = 'SELECT USER FROM usertable LIMIT 10, 100'
+        check_result = new_engine.filter_sql(sql=sql_without_limit, limit_num=1)
+        self.assertEqual(check_result, 'SELECT USER FROM usertable limit 1;')
+
+    def test_filter_sql_not_select(self):
+        new_engine = MysqlEngine(instance=self.ins1)
+        sql_without_limit = 'show create table usertable;'
+        check_result = new_engine.filter_sql(sql=sql_without_limit, limit_num=1)
+        self.assertEqual(check_result, 'show create table usertable;')
 
     @patch('sql.engines.mysql.data_masking', return_value=ResultSet())
     def test_query_masking(self, _data_masking):
@@ -490,7 +521,7 @@ class TestMysql(TestCase):
     @patch.object(MysqlEngine, 'query')
     def test_seconds_behind_master(self, _query):
         new_engine = MysqlEngine(instance=self.ins1)
-        new_engine.seconds_behind_master()
+        new_engine.seconds_behind_master
         _query.assert_called_once_with(sql="show slave status")
 
 
@@ -498,7 +529,7 @@ class TestRedis(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ins = Instance(instance_name='some_ins', type='slave', db_type='redis', host='some_host',
-                           port=1366, user='ins_user', password='some_pass')
+                           port=1366, user='ins_user', password='some_str')
         cls.ins.save()
 
     @classmethod
@@ -622,12 +653,14 @@ class TestPgSQL(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ins = Instance(instance_name='some_ins', type='slave', db_type='pgsql', host='some_host',
-                           port=1366, user='ins_user', password='some_pass')
+                           port=1366, user='ins_user', password='some_str')
         cls.ins.save()
+        cls.sys_config = SysConfig()
 
     @classmethod
     def tearDownClass(cls):
         cls.ins.delete()
+        cls.sys_config.purge()
 
     @patch('psycopg2.connect')
     def test_engine_base_info(self, _conn):
@@ -638,7 +671,7 @@ class TestPgSQL(TestCase):
     @patch('psycopg2.connect')
     def test_get_connection(self, _conn):
         new_engine = PgSQLEngine(instance=self.ins)
-        new_engine.get_connection()
+        new_engine.get_connection("some_dbname")
         _conn.assert_called_once()
 
     @patch('psycopg2.connect.cursor.execute')
@@ -647,7 +680,7 @@ class TestPgSQL(TestCase):
     def test_query(self, _conn, _cursor, _execute):
         _conn.return_value.cursor.return_value.fetchmany.return_value = [(1,)]
         new_engine = PgSQLEngine(instance=self.ins)
-        query_result = new_engine.query(db_name=0, sql='select 1', limit_num=100)
+        query_result = new_engine.query(db_name="some_dbname", sql='select 1', limit_num=100, schema_name="some_schema")
         self.assertIsInstance(query_result, ResultSet)
         self.assertListEqual(query_result.rows, [(1,)])
 
@@ -657,11 +690,11 @@ class TestPgSQL(TestCase):
     def test_query_not_limit(self, _conn, _cursor, _execute):
         _conn.return_value.cursor.return_value.fetchall.return_value = [(1,)]
         new_engine = PgSQLEngine(instance=self.ins)
-        query_result = new_engine.query(db_name=0, sql='select 1', limit_num=0)
+        query_result = new_engine.query(db_name="some_dbname", sql='select 1', limit_num=0, schema_name="some_schema")
         self.assertIsInstance(query_result, ResultSet)
         self.assertListEqual(query_result.rows, [(1,)])
 
-    @patch('sql.engines.pgsql.PgSQLEngine.query',
+    @patch('sql.engines.pgsql.PgSQLEngine._query',
            return_value=ResultSet(rows=[('postgres',), ('archery',), ('template1',), ('template0',)]))
     def test_get_all_databases(self, _query):
         new_engine = PgSQLEngine(instance=self.ins)
@@ -733,6 +766,108 @@ class TestPgSQL(TestCase):
         masking_result = new_engine.query_masking(db_name=0, sql='', resultset=query_result)
         self.assertEqual(masking_result, query_result)
 
+    def test_execute_check_select_sql(self):
+        sql = 'select * from user;'
+        row = ReviewResult(id=1, errlevel=2,
+                           stagestatus='驳回不支持语句',
+                           errormessage='仅支持DML和DDL语句，查询语句请使用SQL查询功能！',
+                           sql=sql)
+        new_engine = OracleEngine(instance=self.ins)
+        check_result = new_engine.execute_check(db_name='archery', sql=sql)
+        self.assertIsInstance(check_result, ReviewSet)
+        self.assertEqual(check_result.rows[0].__dict__, row.__dict__)
+
+    def test_execute_check_critical_sql(self):
+        self.sys_config.set('critical_ddl_regex', '^|update')
+        self.sys_config.get_all_config()
+        sql = 'update user set id=1'
+        row = ReviewResult(id=1, errlevel=2,
+                           stagestatus='驳回高危SQL',
+                           errormessage='禁止提交匹配' + '^|update' + '条件的语句！',
+                           sql=sql)
+        new_engine = OracleEngine(instance=self.ins)
+        check_result = new_engine.execute_check(db_name='archery', sql=sql)
+        self.assertIsInstance(check_result, ReviewSet)
+        self.assertEqual(check_result.rows[0].__dict__, row.__dict__)
+
+    def test_execute_check_normal_sql(self):
+        self.sys_config.purge()
+        sql = 'alter table tb set id=1'
+        row = ReviewResult(id=1,
+                           errlevel=0,
+                           stagestatus='Audit completed',
+                           errormessage='None',
+                           sql=sql,
+                           affected_rows=0,
+                           execute_time=0, )
+        new_engine = OracleEngine(instance=self.ins)
+        check_result = new_engine.execute_check(db_name='archery', sql=sql)
+        self.assertIsInstance(check_result, ReviewSet)
+        self.assertEqual(check_result.rows[0].__dict__, row.__dict__)
+
+    @patch('psycopg2.connect.cursor.execute')
+    @patch('psycopg2.connect.cursor')
+    @patch('psycopg2.connect')
+    def test_execute_workflow_success(self, _conn, _cursor, _execute):
+        sql = 'update user set id=1'
+        row = ReviewResult(id=1,
+                           errlevel=0,
+                           stagestatus='Execute Successfully',
+                           errormessage='None',
+                           sql=sql,
+                           affected_rows=0,
+                           execute_time=0,
+                           full_sql=sql)
+        wf = SqlWorkflow.objects.create(
+            workflow_name='some_name',
+            group_id=1,
+            group_name='g1',
+            engineer_display='',
+            audit_auth_groups='some_group',
+            create_time=datetime.now() - timedelta(days=1),
+            status='workflow_finish',
+            is_backup=True,
+            instance=self.ins,
+            db_name='some_db',
+            syntax_type=1
+        )
+        SqlWorkflowContent.objects.create(workflow=wf, sql_content=sql)
+        new_engine = PgSQLEngine(instance=self.ins)
+        execute_result = new_engine.execute_workflow(workflow=wf)
+        self.assertIsInstance(execute_result, ReviewSet)
+        self.assertEqual(execute_result.rows[0].__dict__.keys(), row.__dict__.keys())
+
+    @patch('psycopg2.connect.cursor.execute')
+    @patch('psycopg2.connect.cursor')
+    @patch('psycopg2.connect', return_value=RuntimeError)
+    def test_execute_workflow_exception(self, _conn, _cursor, _execute):
+        sql = 'update user set id=1'
+        row = ReviewResult(id=1,
+                           errlevel=2,
+                           stagestatus='Execute Failed',
+                           errormessage=f'异常信息：{f"Oracle命令执行报错，语句：{sql}"}',
+                           sql=sql,
+                           affected_rows=0,
+                           execute_time=0, )
+        wf = SqlWorkflow.objects.create(
+            workflow_name='some_name',
+            group_id=1,
+            group_name='g1',
+            engineer_display='',
+            audit_auth_groups='some_group',
+            create_time=datetime.now() - timedelta(days=1),
+            status='workflow_finish',
+            is_backup=True,
+            instance=self.ins,
+            db_name='some_db',
+            syntax_type=1
+        )
+        SqlWorkflowContent.objects.create(workflow=wf, sql_content=sql)
+        with self.assertRaises(AttributeError):
+            new_engine = PgSQLEngine(instance=self.ins)
+            execute_result = new_engine.execute_workflow(workflow=wf)
+            self.assertIsInstance(execute_result, ReviewSet)
+            self.assertEqual(execute_result.rows[0].__dict__.keys(), row.__dict__.keys())
 
 class TestModel(TestCase):
 
@@ -761,7 +896,7 @@ class TestModel(TestCase):
 class TestInception(TestCase):
     def setUp(self):
         self.ins = Instance.objects.create(instance_name='some_ins', type='slave', db_type='mysql', host='some_host',
-                                           port=3306, user='ins_user', password='some_pass')
+                                           port=3306, user='ins_user', password='some_str')
         self.ins_inc = Instance.objects.create(instance_name='some_ins_inc', type='slave', db_type='inception',
                                                host='some_host', port=6669)
         self.wf = SqlWorkflow.objects.create(
@@ -958,7 +1093,7 @@ class TestGoInception(TestCase):
     def setUp(self):
         self.ins = Instance.objects.create(instance_name='some_ins', type='slave', db_type='mysql',
                                            host='some_host',
-                                           port=3306, user='ins_user', password='some_pass')
+                                           port=3306, user='ins_user', password='some_str')
         self.ins_inc = Instance.objects.create(instance_name='some_ins_inc', type='slave', db_type='goinception',
                                                host='some_host', port=4000)
         self.wf = SqlWorkflow.objects.create(
@@ -1103,7 +1238,7 @@ class TestOracle(TestCase):
 
     def setUp(self):
         self.ins = Instance.objects.create(instance_name='some_ins', type='slave', db_type='oracle',
-                                           host='some_host', port=3306, user='ins_user', password='some_pass',
+                                           host='some_host', port=3306, user='ins_user', password='some_str',
                                            sid='some_id')
         self.wf = SqlWorkflow.objects.create(
             workflow_name='some_name',
@@ -1394,3 +1529,45 @@ class TestOracle(TestCase):
             execute_result = new_engine.execute_workflow(workflow=wf)
             self.assertIsInstance(execute_result, ReviewSet)
             self.assertEqual(execute_result.rows[0].__dict__.keys(), row.__dict__.keys())
+
+
+class MongoTest(TestCase):
+    def setUp(self) -> None:
+        self.ins = Instance.objects.create(instance_name='some_ins', type='slave', db_type='mongo',
+                                           host='some_host', port=3306, user='ins_user')
+        self.engine = MongoEngine(instance=self.ins)
+
+    def tearDown(self) -> None:
+        self.ins.delete()
+
+    @patch('sql.engines.mongo.pymongo')
+    def test_get_connection(self, mock_pymongo):
+        _ = self.engine.get_connection()
+        mock_pymongo.MongoClient.assert_called_once()
+
+    @patch('sql.engines.mongo.MongoEngine.get_connection')
+    def test_query(self, mock_get_connection):
+        # TODO 正常查询还没做
+        test_sql = 'test.find({"id":{"$gt":1.0}})'
+        self.assertIsInstance(self.engine.query(test_sql), ResultSet)
+
+    def test_query_check(self):
+        test_sql = 'test.find({"id":{"$gt":1.0}})'
+        check_result = self.engine.query_check(sql=test_sql)
+        self.assertEqual(False, check_result.get('bad_query'))
+
+    @patch('sql.engines.mongo.MongoEngine.get_connection')
+    def test_get_all_databases(self, mock_get_connection):
+        db_list = self.engine.get_all_databases()
+        self.assertIsInstance(db_list, ResultSet)
+        mock_get_connection.return_value.list_database_names.assert_called_once()
+
+    @patch('sql.engines.mongo.MongoEngine.get_connection')
+    def test_get_all_tables(self, mock_get_connection):
+        mock_db = Mock()
+        # 下面是查表示例返回结果
+        mock_db.list_collection_names.return_value = ['u', 'v', 'w']
+        mock_get_connection.return_value = {'some_db': mock_db}
+        table_list = self.engine.get_all_tables('some_db')
+        mock_db.list_collection_names.assert_called_once()
+        self.assertEqual(table_list.rows, ['u', 'v', 'w'])

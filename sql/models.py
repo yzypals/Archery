@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*- 
+# -*- coding: UTF-8 -*-
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from common.utils.aes_decryptor import Prpcrypt
@@ -12,6 +12,11 @@ class Users(AbstractUser):
     display = models.CharField('显示的中文名', max_length=50, default='')
     failed_login_count = models.IntegerField('失败计数', default=0)
     last_login_failed_at = models.DateTimeField('上次失败登录时间', blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        self.failed_login_count = min(127, self.failed_login_count)
+        self.failed_login_count = max(0, self.failed_login_count)
+        super(Users, self).save(*args, **kwargs)
 
     def __str__(self):
         if self.display:
@@ -31,6 +36,8 @@ DB_TYPE_CHOICES = (
     ('redis', 'Redis'),
     ('pgsql', 'PgSQL'),
     ('oracle', 'Oracle'),
+    ('mongo', 'Mongo'),
+    ('phoenix', 'Phoenix'),
     ('inception', 'Inception'),
     ('goinception', 'goInception'))
 
@@ -401,7 +408,7 @@ class QueryLog(models.Model):
     # TODO 改为实例外键
     instance_name = models.CharField('实例名称', max_length=50)
     db_name = models.CharField('数据库名称', max_length=64)
-    sqllog = models.TextField('执行的sql查询')
+    sqllog = models.TextField('执行的查询语句')
     effect_row = models.BigIntegerField('返回行数')
     cost_time = models.CharField('执行耗时', max_length=10, default='')
     # TODO 改为user 外键
@@ -410,6 +417,8 @@ class QueryLog(models.Model):
     priv_check = models.BooleanField('查询权限是否正常校验', choices=((False, '跳过'), (True, '正常'),), default=False)
     hit_rule = models.BooleanField('查询是否命中脱敏规则', choices=((False, '未命中/未知'), (True, '命中')), default=False)
     masking = models.BooleanField('查询结果是否正常脱敏', choices=((False, '否'), (True, '是'),), default=False)
+    favorite = models.BooleanField('是否收藏', choices=((False, '否'), (True, '是'),), default=False)
+    alias = models.CharField('语句标识', max_length=64, default='', blank=True)
     create_time = models.DateTimeField('操作时间', auto_now_add=True)
     sys_time = models.DateTimeField(auto_now=True)
 
@@ -600,13 +609,13 @@ class Permission(models.Model):
             ('menu_instance', '菜单 实例管理'),
             ('menu_instance_list', '菜单 实例列表'),
             ('menu_dbdiagnostic', '菜单 会话管理'),
+            ('menu_instance_user', '菜单 实例用户列表'),
             ('menu_param', '菜单 参数配置'),
             ('menu_data_dictionary', '菜单 数据字典'),
             ('menu_binlog2sql', '菜单 Binlog2SQL'),
             ('menu_schemasync', '菜单 SchemaSync'),
             ('menu_system', '菜单 系统管理'),
             ('menu_document', '菜单 相关文档'),
-            ('menu_themis', '菜单 数据库审核'),
             ('sql_submit', '提交SQL上线工单'),
             ('sql_review', '审核SQL上线工单'),
             ('sql_execute_for_resource_group', '执行SQL上线工单(资源组粒度)'),

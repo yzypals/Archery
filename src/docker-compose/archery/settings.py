@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*- 
+# -*- coding: UTF-8 -*-
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -30,7 +30,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django_q',
     'sql',
-    'themis',
+    'sql_api',
     'common',
 )
 
@@ -135,17 +135,6 @@ DATABASES = {
     }
 }
 
-# themis审核所需mongodb数据库，账号角色必须有"anyAction" to "anyResource"权限
-MONGODB_DATABASES = {
-    "default": {
-        "NAME": 'themis',
-        "USER": 'root',
-        "PASSWORD": '123456',
-        "HOST": 'mongo',
-        "PORT": 27017,
-    },
-}
-
 # Django-Q
 Q_CLUSTER = {
     'name': 'archery',
@@ -168,6 +157,7 @@ CACHES = {
         "LOCATION": "redis://redis:6379/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PASSWORD": "123456"
         }
     }
 }

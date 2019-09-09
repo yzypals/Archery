@@ -18,7 +18,7 @@ from sql.engines.models import ReviewResult, ReviewSet
 from sql.utils.tasks import task_info
 
 from .models import Users, SqlWorkflow, QueryPrivileges, ResourceGroup, \
-    QueryPrivilegesApply, Config, SQL_WORKFLOW_CHOICES, InstanceTag, Instance
+    QueryPrivilegesApply, Config, SQL_WORKFLOW_CHOICES, InstanceTag, Instance, QueryLog
 from sql.utils.workflow_audit import Audit
 from sql.utils.sql_review import can_execute, can_timingtask, can_cancel
 from common.utils.const import Const, WorkflowDict
@@ -38,7 +38,8 @@ def login(request):
     """登录页面"""
     if request.user and request.user.is_authenticated:
         return HttpResponseRedirect('/')
-    return render(request, 'login.html')
+
+    return render(request, 'login.html', context={'sign_up_enabled': SysConfig().get('sign_up_enabled')})
 
 
 @permission_required('sql.menu_dashboard', raise_exception=True)
@@ -159,12 +160,16 @@ def detail(request, workflow_id):
                 rows = review_result.json()
         except IndexError:
             review_result.rows += [ReviewResult(
+                id=1,
+                sql=workflow_detail.sqlworkflowcontent.sql_content,
                 errormessage="Json decode failed."
                              "执行结果Json解析失败, 请联系管理员"
             )]
             rows = review_result.json()
         except json.decoder.JSONDecodeError:
             review_result.rows += [ReviewResult(
+                id=1,
+                sql=workflow_detail.sqlworkflowcontent.sql_content,
                 # 迫于无法单元测试这里加上英文报错信息
                 errormessage="Json decode failed."
                              "执行结果Json解析失败, 请联系管理员"
@@ -215,7 +220,10 @@ def sqlquery(request):
     """SQL在线查询页面"""
     # 主动创建标签
     InstanceTag.objects.get_or_create(tag_code='can_read', defaults={'tag_name': '支持查询', 'active': True})
-    return render(request, 'sqlquery.html')
+    # 收藏语句
+    user = request.user
+    favorites = QueryLog.objects.filter(username=user.username, favorite=True).values('id', 'alias')
+    return render(request, 'sqlquery.html', {'favorites': favorites})
 
 
 @permission_required('sql.menu_queryapplylist', raise_exception=True)
@@ -283,9 +291,9 @@ def instance(request):
 
 
 @permission_required('sql.menu_instance', raise_exception=True)
-def instanceuser(request, instance_id):
+def instanceuser(request):
     """实例用户管理页面"""
-    return render(request, 'instanceuser.html', {'instance_id': instance_id})
+    return render(request, 'instanceuser.html')
 
 
 @permission_required('sql.menu_dbdiagnostic', raise_exception=True)
@@ -369,7 +377,7 @@ def workflowsdetail(request, audit_id):
 def dbaprinciples(request):
     """SQL文档页面"""
     #  读取MD文件
-    file = os.path.join(settings.BASE_DIR, 'docs/mysql_db_design_guide.md')
+    file = os.path.join(settings.BASE_DIR, 'docs/docs.md')
     with open(file, 'r') as f:
         md = f.read().replace('\n', '\\n')
     return render(request, 'dbaprinciples.html', {'md': md})

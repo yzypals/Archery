@@ -19,12 +19,14 @@ class InceptionEngine(EngineBase):
         if self.conn:
             return self.conn
         if hasattr(self, 'instance'):
-            self.conn = MySQLdb.connect(host=self.host, port=self.port, charset=self.instance.charset or 'utf8mb4')
+            self.conn = MySQLdb.connect(host=self.host, port=self.port, charset=self.instance.charset or 'utf8mb4',
+                                        connect_timeout=10)
             return self.conn
         archer_config = SysConfig()
         inception_host = archer_config.get('inception_host')
         inception_port = int(archer_config.get('inception_port', 6669))
-        self.conn = MySQLdb.connect(host=inception_host, port=inception_port, charset='utf8mb4')
+        self.conn = MySQLdb.connect(host=inception_host, port=inception_port, charset='utf8mb4',
+                                    connect_timeout=10)
         return self.conn
 
     @staticmethod
@@ -116,6 +118,18 @@ class InceptionEngine(EngineBase):
                                 {sql_tmp}
                                 inception_magic_commit;"""
             one_line_execute_result = self.query(sql=sql_execute, close_conn=False)
+
+            # 执行报错，inception crash或者执行中连接异常的场景
+            if one_line_execute_result.error and not one_line_execute_result.rows:
+                execute_result.error = one_line_execute_result.error
+                execute_result.rows = [ReviewResult(
+                    stage='Execute failed',
+                    errlevel=2,
+                    stagestatus='异常终止',
+                    errormessage=f'Inception Error: {one_line_execute_result.error}',
+                    sql=sql_tmp)]
+                return execute_result
+
             # 把结果转换为ReviewSet
             for r in one_line_execute_result.rows:
                 execute_result.rows += [ReviewResult(inception_result=r)]
@@ -144,7 +158,7 @@ class InceptionEngine(EngineBase):
             result_set.rows = rows
             result_set.affected_rows = effect_row
         except Exception as e:
-            logger.error(f"Inception语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}")
+            logger.warning(f"Inception语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}")
             result_set.error = str(e)
         if close_conn:
             self.close()

@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*- 
+# -*- coding: UTF-8 -*-
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -30,7 +30,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django_q',
     'sql',
-    'themis',
+    'sql_api',
     'common',
 )
 
@@ -136,17 +136,6 @@ DATABASES = {
     }
 }
 
-# themis审核所需mongodb数据库，账号角色必须有"anyAction" to "anyResource"权限
-MONGODB_DATABASES = {
-    "default": {
-        "NAME": 'themis',
-        "USER": '',
-        "PASSWORD": '',
-        "HOST": '127.0.0.1',
-        "PORT": 27017,
-    },
-}
-
 # Django-Q
 Q_CLUSTER = {
     'name': 'archery',
@@ -169,6 +158,7 @@ CACHES = {
         "LOCATION": "redis://127.0.0.1:6379/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PASSWORD": ""
         }
     }
 }
@@ -186,6 +176,12 @@ if ENABLE_LDAP:
 
     AUTH_LDAP_SERVER_URI = "ldap://xxx"
     AUTH_LDAP_USER_DN_TEMPLATE = "cn=%(user)s,ou=xxx,dc=xxx,dc=xxx"
+    # ldap认证的另一种方式,使用时注释AUTH_LDAP_USER_DN_TEMPLATE
+    """
+    AUTH_LDAP_BIND_DN = "cn=xxx,ou=xxx,dc=xxx,dc=xxx"
+    AUTH_LDAP_BIND_PASSWORD = "***********"
+    AUTH_LDAP_USER_SEARCH = LDAPSearch('ou=xxx,dc=xxx,dc=xxx',ldap.SCOPE_SUBTREE, '(cn=%(user)s)',)
+    """
     AUTH_LDAP_ALWAYS_UPDATE_USER = True  # 每次登录从ldap同步用户信息
     AUTH_LDAP_USER_ATTR_MAP = {  # key为archery.sql_users字段名，value为ldap中字段名，用户同步信息
         "username": "cn",

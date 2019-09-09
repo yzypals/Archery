@@ -17,12 +17,14 @@ class GoInceptionEngine(EngineBase):
         if self.conn:
             return self.conn
         if hasattr(self, 'instance'):
-            self.conn = MySQLdb.connect(host=self.host, port=self.port, charset=self.instance.charset or 'utf8mb4')
+            self.conn = MySQLdb.connect(host=self.host, port=self.port, charset=self.instance.charset or 'utf8mb4',
+                                        connect_timeout=10)
             return self.conn
         archer_config = SysConfig()
         go_inception_host = archer_config.get('go_inception_host')
         go_inception_port = int(archer_config.get('go_inception_port', 4000))
-        self.conn = MySQLdb.connect(host=go_inception_host, port=go_inception_port, charset='utf8mb4')
+        self.conn = MySQLdb.connect(host=go_inception_host, port=go_inception_port, charset='utf8mb4',
+                                    connect_timeout=10)
         return self.conn
 
     def execute_check(self, instance=None, db_name=None, sql=''):
@@ -69,6 +71,18 @@ class GoInceptionEngine(EngineBase):
                             {workflow.sqlworkflowcontent.sql_content.rstrip(';')};
                             inception_magic_commit;"""
         inception_result = self.query(sql=sql_execute)
+
+        # 执行报错，inception crash或者执行中连接异常的场景
+        if inception_result.error and not execute_result.rows:
+            execute_result.error = inception_result.error
+            execute_result.rows = [ReviewResult(
+                stage='Execute failed',
+                errlevel=2,
+                stagestatus='异常终止',
+                errormessage=f'goInception Error: {inception_result.error}',
+                sql=workflow.sqlworkflowcontent.sql_content)]
+            return execute_result
+
         # 把结果转换为ReviewSet
         for r in inception_result.rows:
             execute_result.rows += [ReviewResult(inception_result=r)]
@@ -97,7 +111,7 @@ class GoInceptionEngine(EngineBase):
             result_set.rows = rows
             result_set.affected_rows = effect_row
         except Exception as e:
-            logger.error(f'goInception语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}')
+            logger.warning(f'goInception语句执行报错，语句：{sql}，错误信息{traceback.format_exc()}')
             result_set.error = str(e)
         if close_conn:
             self.close()
