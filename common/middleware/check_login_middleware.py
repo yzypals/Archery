@@ -8,8 +8,8 @@ IGNORE_URL = [
     '/authenticate/',
     '/signup/',
     '/api/info',
-    'openapi/passed/',
-    'openapi/query/privaudit/'
+    '/openapi/passed/',
+    '/openapi/query/privaudit/'
 ]
 
 IGNORE_URL_RE = r'/admin/\w*'
