@@ -3,6 +3,12 @@ import datetime
 import logging
 import traceback
 
+import os
+import time
+import xlwt as xlwt
+from common.utils.timer import FuncTimer
+from sql.query_privileges import query_priv_check
+
 import simplejson as json
 from django.contrib.auth.decorators import permission_required
 from django.core.exceptions import PermissionDenied
@@ -20,7 +26,7 @@ from common.utils.extend_json_encoder import ExtendJSONEncoder
 from sql.notify import notify_for_audit
 from sql.models import ResourceGroup, Users
 from sql.utils.resource_group import user_groups, user_instances
-from sql.utils.tasks import add_sql_schedule, del_schedule
+from sql.utils.tasks import add_sql_schedule, del_schedule, add_kill_conn_schedule
 from sql.utils.sql_review import can_timingtask, can_cancel, can_execute, on_correct_time_period
 from sql.utils.workflow_audit import Audit
 from .models import SqlWorkflow, SqlWorkflowContent, Instance
@@ -146,6 +152,8 @@ def submit(request):
     list_cc_addr = [email['email'] for email in Users.objects.filter(username__in=notify_users).values('email')]
     run_date_start = request.POST.get('run_date_start')
     run_date_end = request.POST.get('run_date_end')
+    bak_sql_content = request.POST.get('bak_sql_content')
+    remark = request.POST.get('remark')
 
     # 服务器端参数验证
     if None in [sql_content, db_name, instance_name, db_name, is_backup]:
@@ -205,6 +213,8 @@ def submit(request):
             SqlWorkflowContent.objects.create(workflow=sql_workflow,
                                               sql_content=sql_content,
                                               review_content=check_result.json(),
+                                              remark=remark,
+                                              bak_sql_content=bak_sql_content,
                                               execute_result=''
                                               )
             workflow_id = sql_workflow.id
@@ -372,6 +382,16 @@ def execute(request):
     if on_correct_time_period(workflow_id) is False:
         context = {'errMsg': '不在可执行时间范围内，如果需要修改执行时间请重新提交工单!'}
         return render(request, 'error.html', context)
+
+    #执行前先检查有没有备份语句提交
+    bak_sql_content = SqlWorkflowContent.objects.get(workflow_id=workflow_id).bak_sql_content
+    if bak_sql_content:
+        user = request.user
+        result = bak_sql_query_save(workflow_id, user)
+        if result['status'] != 0:
+            context = {'errMsg': '备份未完成 请检查备份语句或联系管理员!'}
+            return render(request, 'error.html', context)
+
     # 根据执行模式进行对应修改
     mode = request.POST.get('mode')
     if mode == "auto":
@@ -405,6 +425,110 @@ def execute(request):
                    hook='sql.utils.execute_sql.execute_callback', timeout=-1)
 
     return HttpResponseRedirect(reverse('sql:detail', args=(workflow_id,)))
+
+def bak_sql_query_save(workflow_id, user):
+    """
+    执行备份语句且保存
+    :param workflow_id:
+    :param user:
+    :return: result
+    """
+    workflow_detail =  SqlWorkflow.objects.get(id=workflow_id)
+    instance_name = workflow_detail.instance.instance_name
+    sql_content = workflow_detail.sqlworkflowcontent.bak_sql_content
+    db_name = workflow_detail.db_name
+    limit_num = 0
+    schedule_name = None
+
+    result = {'status': 0, 'msg': 'ok', 'data': {}}
+    try:
+        instance = Instance.objects.get(instance_name=instance_name)
+    except Instance.DoesNotExist:
+        result['status'] = 1
+        result['msg'] = '实例不存在'
+        return result
+
+    # 服务器端参数验证
+    if None in [sql_content, db_name, instance_name, limit_num]:
+        result['status'] = 1
+        result['msg'] = '页面提交参数可能为空'
+        return result
+
+    try:
+        config = SysConfig()
+        # 查询前的检查，禁用语句检查，语句切分
+        query_engine = get_engine(instance=instance)
+        query_check_info = query_engine.query_check(db_name=db_name, sql=sql_content)
+        if query_check_info.get('bad_query'):
+            # 引擎内部判断为 bad_query
+            result['status'] = 1
+            result['msg'] = query_check_info.get('msg')
+            return result
+        sql_content = query_check_info['filtered_sql']
+
+        # 查询权限校验，并且获取limit_num
+        priv_check_info = query_priv_check(user, instance, db_name, sql_content, limit_num)
+        if priv_check_info['status'] == 0:
+            limit_num = priv_check_info['data']['limit_num']
+            priv_check = priv_check_info['data']['priv_check']
+        else:
+            result['status'] = 1
+            result['msg'] = priv_check_info['msg']
+            return result
+        # explain的limit_num设置为0
+        limit_num = 0
+
+        # 对查询sql增加limit限制或者改写语句
+        sql_content = query_engine.filter_sql(sql=sql_content, limit_num=limit_num)
+
+        # 先获取查询连接，用于后面查询复用连接以及终止会话
+        query_engine.get_connection(db_name=db_name)
+        thread_id = query_engine.thread_id
+        max_execution_time = int(config.get('max_execution_time', 60))
+        # 执行查询语句，并增加一个定时终止语句的schedule，timeout=max_execution_time
+        if thread_id:
+            schedule_name = f'query-{time.time()}'
+            run_date = (datetime.datetime.now() + datetime.timedelta(seconds=max_execution_time))
+            add_kill_conn_schedule(schedule_name, run_date, instance.id, thread_id)
+        with FuncTimer() as t:
+            # 获取主从延迟信息
+            query_result = query_engine.query(db_name, sql_content, limit_num)
+        query_result.query_time = t.cost
+        # 返回查询结果后删除schedule
+        if thread_id:
+            del_schedule(schedule_name)
+        # 查询异常
+        if query_result.error:
+            result['status'] = 1
+            result['msg'] = query_result.error
+        # 无需脱敏的语句
+        else:
+            result['data'] = query_result.__dict__
+            #将结果报错至本地xls文件
+            #todo 行数的限制这里会是个坑 要排查下
+            workflow_name = workflow_detail.workflow_name
+            filename = str(workflow_id) + workflow_name + str(datetime.datetime.now()).replace(" ",'_').replace(":",'_')
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            fullpath = BASE_DIR +'/downloads/' +filename
+            fileds = result['data']['column_list']
+            all_data = result['data']['rows']
+            book = xlwt.Workbook()
+            sheet = book.add_sheet('sheet1')
+            for col, field in enumerate(fileds):
+                sheet.write(0, col, field)
+            row = 1
+            for data in all_data:
+                for col, field in enumerate(data):
+                    sheet.write(row, col, field)
+                row += 1
+            book.save('%s.xls' % fullpath)
+    except Exception as e:
+        logger.error(f'查询异常报错，查询语句：{sql_content}\n，错误信息：{traceback.format_exc()}')
+        result['status'] = 1
+        result['msg'] = f'查询异常报错，错误信息：{e}'
+        return result
+    # 返回查询结果
+    return result
 
 
 def timing_task(request):

@@ -108,11 +108,19 @@
                             <div id="div-workflow_auditors" class="form-group" style="display: none">
                                 <p class="bg-primary">&nbsp&nbsp&nbsp审批流程：<b id="workflow_auditors_display"></b></p>
                             </div>
+                            <div class="form-group">
+                                <input id="remark" type="text"  name="remark" class="form-control"
+                                       placeholder="备注"/>
+                            </div>
                             <!--button-->
                             <div class="form-group">
                                 <input id="btn-format" type="button" class="btn btn-info" value="美化"/>
                                 <input type="button" id="btn-autoreview" class="btn btn-danger" value="SQL检测"/>
                                 <input id="btn-submitsql" type="button" class="btn btn-success" value="SQL提交"/>
+                            </div>
+                            <div class="form-group">
+                                <input  id="bak_sql_content" type="text" class="form-control" name="bak_sql_content"
+                                placeholder="如需备份 请填写备份语句"/>
                             </div>
                         </div>
                     </form>

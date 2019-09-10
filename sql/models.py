@@ -225,6 +225,8 @@ class SqlWorkflowContent(models.Model):
     sql_content = models.TextField('具体sql内容')
     review_content = models.TextField('自动审核内容的JSON格式')
     execute_result = models.TextField('执行结果的JSON格式', blank=True)
+    remark = models.TextField('备注', blank=True, default='')
+    bak_sql_content = models.TextField('备份语句', blank=True, default='')
     auth_code = models.CharField('验证码', max_length=16, blank=True, default='')
 
     def __str__(self):
