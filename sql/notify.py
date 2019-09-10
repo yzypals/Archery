@@ -66,16 +66,18 @@ def notify_for_audit(audit_id, **kwargs):
         workflow_detail = SqlWorkflow.objects.get(pk=workflow_id)
         instance = workflow_detail.instance.instance_name
         db_name = workflow_detail.db_name
+        bak_sql_content = workflow_detail.sqlworkflowcontent.bak_sql_content
         run_date_start = workflow_detail.run_date_start .strftime('%Y-%m-%d %H:%M:%S') \
             if workflow_detail.run_date_start else "不限制"
         run_date_end = workflow_detail.run_date_end.strftime('%Y-%m-%d %H:%M:%S') \
             if workflow_detail.run_date_end else "不限制"
         workflow_content = re.sub('[\r\n\f]{2,}', '\n',
                                   workflow_detail.sqlworkflowcontent.sql_content.replace('\r', ''))
-        workflow_content =  '''\n可执行起始时间:{}\n可执行结束时间:{}\nsql语句:{}'''.format(
+        workflow_content =  '''\n可执行起始时间:{}\n可执行结束时间:{}\nsql语句:{}\n备份语句:{}'''.format(
             run_date_start,
             run_date_end,
-            workflow_content
+            workflow_content,
+            bak_sql_content
         )
     else:
         raise Exception('工单类型不正确')

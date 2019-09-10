@@ -54,6 +54,9 @@ def execute_callback(task):
         execute_result = task.result
         workflow.status = 'workflow_finish'
     # 保存执行结果
+    bak_sql_content = workflow.sqlworkflowcontent.bak_sql_content
+    if bak_sql_content:
+        execute_result.rows[1].bak_sql_content = bak_sql_content
     workflow.sqlworkflowcontent.execute_result = execute_result.json()
     workflow.sqlworkflowcontent.save()
     workflow.save()

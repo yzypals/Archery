@@ -41,6 +41,7 @@ class ReviewResult:
             self.sqlsha1 = kwargs.get('sqlsha1', '')
             self.backup_time = kwargs.get('backup_time', '')
             self.actual_affected_rows = kwargs.get('actual_affected_rows', '')
+            self.bak_sql_content = kwargs.get('bak_sql_content', '')
 
 
 class ReviewSet:

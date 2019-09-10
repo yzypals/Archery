@@ -180,6 +180,9 @@ def submit(request):
     if not sys_config.get('enable_backup_switch') and check_engine.auto_backup:
         is_backup = True
 
+    if bak_sql_content:
+        check_result.rows[0].bak_sql_content = bak_sql_content
+
     # 按照系统配置确定是自动驳回还是放行
     auto_review_wrong = sys_config.get('auto_review_wrong', '')  # 1表示出现警告就驳回，2和空表示出现错误才驳回
     workflow_status = 'workflow_manreviewing'
