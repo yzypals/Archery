@@ -180,7 +180,9 @@ def submit(request):
     if not sys_config.get('enable_backup_switch') and check_engine.auto_backup:
         is_backup = True
 
+    #检查有无备份语句
     if bak_sql_content:
+        is_backup = True
         check_result.rows[0].bak_sql_content = bak_sql_content
 
     # 按照系统配置确定是自动驳回还是放行
