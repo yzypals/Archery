@@ -515,14 +515,20 @@ def bak_sql_query_save(workflow_id, user):
             fullpath = BASE_DIR +'/downloads/' +filename
             fileds = result['data']['column_list']
             all_data = result['data']['rows']
+            #写入文件
             book = xlwt.Workbook()
             sheet = book.add_sheet('sheet1')
+            style = xlwt.XFStyle()
+            style.num_format_str = 'YYYY/M/D hh:mm:ss'
             for col, field in enumerate(fileds):
                 sheet.write(0, col, field)
             row = 1
             for data in all_data:
                 for col, field in enumerate(data):
-                    sheet.write(row, col, field)
+                    if isinstance(field, datetime.datetime):
+                        sheet.write(row, col, field, style)
+                    else:
+                        sheet.write(row, col, field)
                 row += 1
             book.save('%s.xls' % fullpath)
     except Exception as e:
