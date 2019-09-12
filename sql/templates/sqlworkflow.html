@@ -170,8 +170,8 @@
                     formatter: function (value, row, index) {
                         var span = document.createElement('span');
                         span.setAttribute('title', value);
-                        if (value.length > 20) {
-                            span.innerHTML = "<a href=\"/detail/" + row.id + "/\">" + value.substr(0, 20) + '...';
+                        if (value.length > 8) {
+                            span.innerHTML = "<a href=\"/detail/" + row.id + "/\">" + value.substr(0, 8) + '...';
                             +"</a>";
                         } else {
                             span.innerHTML = "<a href=\"/detail/" + row.id + "/\">" + value + "</a>";
@@ -181,6 +181,24 @@
                 }, {
                     title: '工单完整名称',
                     field: 'workflow_name',
+                    visible: false // 默认不显示
+                }, {
+                    title: '备份(悬停查看备注全文)',
+                    field: 'sqlworkflowcontent__remark',
+                    formatter: function (value, row, index) {
+                        var span = document.createElement('span');
+                        span.setAttribute('title', value);
+                        if (value.length > 8) {
+                            span.innerHTML = "<a href=#>" + value.substr(0, 8) + '...';
+                            +"</a>";
+                        } else {
+                            span.innerHTML = "<a href=#>" + value + "</a>";
+                        }
+                        return span.outerHTML;
+                    }
+                }, {
+                    title: '完整备份',
+                    field: 'sqlworkflowcontent__remark',
                     visible: false // 默认不显示
                 }, {
                     title: '类型',

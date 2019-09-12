@@ -53,6 +53,9 @@
             <th>
                 类型
             </th>
+            <th>
+                备注
+            </th>
         </tr>
         </thead>
         <tbody>
@@ -106,6 +109,9 @@
             </td>
             <td>
                 {{ workflow_detail.get_syntax_type_display }}
+            </td>
+            <td>
+                {{ workflow_detail.sqlworkflowcontent.remark }}
             </td>
         </tr>
         </tbody>

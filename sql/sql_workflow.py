@@ -95,7 +95,7 @@ def sql_workflow_list(request):
         "id", "workflow_name", "engineer_display",
         "status", "is_backup", "create_time",
         "instance__instance_name", "db_name",
-        "group_name", "syntax_type")
+        "group_name", "syntax_type", "sqlworkflowcontent__remark")
 
     # QuerySet 序列化
     rows = [row for row in workflow_list]
