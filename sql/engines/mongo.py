@@ -63,6 +63,7 @@ class MongoEngine(EngineBase):
             db = conn[db_name]
             collect = db[sql.split('.')[0]]
             sql = '.'.join(sql.split('.')[1:])
+            result = ''
             cmd = "result = collect." + sql
             exec(cmd)
             rows = json.loads(json_util.dumps(result))
