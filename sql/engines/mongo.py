@@ -63,14 +63,19 @@ class MongoEngine(EngineBase):
             db = conn[db_name]
             collect = db[sql.split('.')[0]]
             sql = '.'.join(sql.split('.')[1:])
-            result = ''
-            cmd = "result = collect." + sql
-            exec(cmd)
-            rows = json.loads(json_util.dumps(result))
-            result_set.column_list = ['Result']
-            if isinstance(rows, list):
-                result_set.rows = tuple([json.dumps(x, ensure_ascii=False)] for x in rows)
-                result_set.affected_rows = len(rows)
+            cmd = "collect." + sql
+            result = eval(cmd)
+            if isinstance(result,int):
+                rows = [str(result)]
+                result_set.column_list = ['Result']
+                result_set.rows = tuple([x] for x in rows)
+                result_set.affected_rows = 2
+            else:
+                rows = json.loads(json_util.dumps(result))
+                result_set.column_list = ['Result']
+                if isinstance(rows, list):
+                    result_set.rows = tuple([json.dumps(x, ensure_ascii=False)] for x in rows)
+                    result_set.affected_rows = len(rows)
         except Exception as e:
             logger.warning(f"Mongo命令执行报错，语句：{sql}， 错误信息：{traceback.format_exc()}")
             result_set.error = str(e)
