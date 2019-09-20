@@ -38,7 +38,7 @@ class MongoEngine(EngineBase):
     def query_check(self, db_name=None, sql=''):
         """提交查询前的检查"""
         result = {'msg': '', 'bad_query': True, 'filtered_sql': sql, 'has_star': False}
-        safe_cmd = ['find']
+        safe_cmd = ['find', 'aggregat', 'count']
         sql = sql.split('.')[1]
         for cmd in safe_cmd:
             if re.match(fr'^{cmd}\(.*', sql.strip(), re.I):
