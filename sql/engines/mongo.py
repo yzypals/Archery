@@ -38,7 +38,7 @@ class MongoEngine(EngineBase):
     def query_check(self, db_name=None, sql=''):
         """提交查询前的检查"""
         result = {'msg': '', 'bad_query': True, 'filtered_sql': sql, 'has_star': False}
-        safe_cmd = ['find', 'aggregat', 'count']
+        safe_cmd = ['find', 'aggregate', 'count']
         sql = sql.split('.')[1]
         for cmd in safe_cmd:
             if re.match(fr'^{cmd}\(.*', sql.strip(), re.I):
@@ -62,13 +62,9 @@ class MongoEngine(EngineBase):
             conn = self.get_connection()
             db = conn[db_name]
             collect = db[sql.split('.')[0]]
-            match = re.compile(r'[(](.*)[)]', re.S)
-            sql = re.findall(match, sql)[0]
-            if sql != '':
-                sql = json.loads(sql)
-                result = collect.find(sql).limit(limit_num)
-            else:
-                result = collect.find(sql).limit(limit_num)
+            sql = '.'.join(sql.split('.')[1:])
+            cmd = "result = collect." + sql
+            exec(cmd)
             rows = json.loads(json_util.dumps(result))
             result_set.column_list = ['Result']
             if isinstance(rows, list):
