@@ -106,13 +106,18 @@ class OracleEngine(EngineBase):
         """return ResultSet"""
         # https://www.thepolyglotdeveloper.com/2015/01/find-tables-oracle-database-column-name/
         sql = f"""SELECT
-        column_name,
-        data_type,
-        data_length,
-        nullable,
-        data_default
-        FROM all_tab_cols
-        WHERE table_name = '{tb_name}'
+                      atc.column_name,
+                      atc.data_type,
+                      atc.data_length,
+                      atc.nullable,
+                      acc.comments,
+                      atc.data_default
+                    FROM
+                      all_tab_cols atc
+                      inner join all_col_comments acc on atc.TABLE_NAME = acc.table_name
+                      and atc.COLUMN_NAME = acc.column_name
+                    WHERE
+                      atc.table_name = '{tb_name}'
         """
         result = self.query(sql=sql)
         return result
