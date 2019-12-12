@@ -620,6 +620,7 @@ class Permission(models.Model):
             ('menu_document', '菜单 相关文档'),
             ('sql_submit', '提交SQL上线工单'),
             ('sql_review', '审核SQL上线工单'),
+            ('sql_read_only', '查看所有上线sql'),
             ('sql_execute_for_resource_group', '执行SQL上线工单(资源组粒度)'),
             ('sql_execute', '执行SQL上线工单(仅自己提交的)'),
             ('sql_analyze', '执行SQL分析'),

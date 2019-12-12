@@ -71,7 +71,7 @@ def sql_workflow_list(request):
         end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d') + datetime.timedelta(days=1)
         filter_dict['create_time__range'] = (start_date, end_date)
     # 管理员，可查看所有工单
-    if user.is_superuser:
+    if user.is_superuser or user.has_perm('sql.sql_read_only'):
         pass
     # 非管理员，拥有审核权限、资源组粒度执行权限的，可以查看组内所有工单
     elif user.has_perm('sql.sql_review') or user.has_perm('sql.sql_execute_for_resource_group'):
