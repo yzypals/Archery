@@ -69,10 +69,13 @@ def sqlworkflow(request):
     instance = Instance.objects.filter(pk__in=instance_id)
     resource_group_id = SqlWorkflow.objects.filter(**filter_dict).values('group_id').distinct()
     resource_group = ResourceGroup.objects.filter(group_id__in=resource_group_id)
+    engineer = SqlWorkflow.objects.filter(**filter_dict).values('engineer').distinct()
+    engineer_display = Users.objects.filter(username__in=engineer)
+
 
     return render(request, 'sqlworkflow.html',
                   {'status_list': SQL_WORKFLOW_CHOICES,
-                   'instance': instance, 'resource_group': resource_group})
+                   'instance': instance, 'resource_group': resource_group, 'engineer': engineer_display})
 
 
 @permission_required('sql.sql_submit', raise_exception=True)

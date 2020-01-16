@@ -54,6 +54,7 @@ def sql_workflow_list(request):
     limit = offset + limit
     search = request.POST.get('search')
     user = request.user
+    engineer = request.POST.get('engineer')
 
     # 组合筛选项
     filter_dict = dict()
@@ -66,6 +67,9 @@ def sql_workflow_list(request):
     # 资源组
     if resource_group_id:
         filter_dict['group_id'] = resource_group_id
+    # 提交人
+    if engineer:
+        filter_dict['engineer'] = engineer
     # 时间
     if start_date and end_date:
         end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d') + datetime.timedelta(days=1)
