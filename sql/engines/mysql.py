@@ -197,6 +197,14 @@ class MysqlEngine(EngineBase):
             except Exception as e:
                 logger.debug(f"Inception检测语句报错：错误信息{traceback.format_exc()}")
                 raise RuntimeError(f"Inception检测语句报错，请注意检查系统配置中Inception配置，错误信息：\n{e}")
+        # 去除备份库名超长报错
+        patt = r'备份库名 \'.*\' 过长，建议使用别名解析'
+        pattern = re.compile(patt)
+        for row in list(inc_check_result.rows):
+            if pattern.findall(row.errormessage):
+                del inc_check_result.rows[row.id - 1]
+                inc_check_result.error_count -= 1
+        #
         # 判断Inception检测结果
         if inc_check_result.error:
             logger.debug(f"Inception检测语句报错：错误信息{inc_check_result.error}")
