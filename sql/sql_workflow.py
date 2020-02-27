@@ -398,7 +398,7 @@ def execute(request):
         user = request.user
         result = bak_sql_query_save(workflow_id, user)
         if result['status'] != 0:
-            context = {'errMsg': '备份未完成 请检查备份语句或联系管理员!'}
+            context = {'errMsg': f'备份未完成 请检查备份语句或联系管理员!\n备份报错: {result["msg"]}'}
             return render(request, 'error.html', context)
 
     # 根据执行模式进行对应修改
