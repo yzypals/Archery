@@ -600,6 +600,60 @@
                                 </div>
                             </div>
                         </div>
+                        <h4 style="color: darkgrey"><b>数据库执行时间限制</b></h4>
+                        <hr/>
+                        <h5 style="color: darkgrey"><b>SQL上线</b></h5>
+                        <hr/>
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label for="force_disable_start"
+                                       class="col-sm-4 control-label">force_disable_start</label>
+                                <div class="col-sm-5">
+                                    <input type="text" class="form-control"
+                                           id="force_disable_start"
+                                           key="force_disable_start"
+                                           value="{{ config.force_disable_start }}"
+                                           placeholder="时间限制开始时间">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="force_disable_end"
+                                       class="col-sm-4 control-label">force_disable_end</label>
+                                <div class="col-sm-5">
+                                    <input type="text" class="form-control"
+                                           id="force_disable_end"
+                                           key="force_disable_end"
+                                           value="{{ config.force_disable_end }}"
+                                           placeholder="时间限制结束时间">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="execute_control"
+                                       class="col-sm-4 control-label">EXECUTE_CONTROL</label>
+                                <div class="col-sm-8">
+                                    <div class="switch switch-small">
+                                        <label>
+                                            <input id="execute_control" key="execute_control"
+                                                   value="{{ config.execute_control }}"
+                                                   type="checkbox"> 是否启用时间限制
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <h5 style="color: darkgrey"><b>限制的数据库</b></h5>
+                            <hr>
+                            <div class="form-group">
+                                <label for="force_disable_dbid"
+                                       class="col-sm-4 control-label">DB_ID</label>
+                                <div class="col-sm-5">
+                                    <input type="text" class="form-control"
+                                           id="force_disable_dbid"
+                                           key="force_disable_dbid"
+                                           value="{{ config.force_disable_dbid }}"
+                                           placeholder="限制执行的数据库id，多个请用空格分隔">
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <div class="col-sm-offset-4 col-sm-10">
                                 <button id="saveconfig" type="button" class="btn btn-default">保存配置</button>

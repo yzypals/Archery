@@ -84,8 +84,19 @@ def on_correct_time_period(workflow_id, run_date=None):
     stime = workflow_detail.run_date_start
     etime = workflow_detail.run_date_end
     if (stime and stime > ctime) or (etime and etime < ctime):
-        result = False
+        return False
+    sysconfig = SysConfig()
+    if sysconfig.get('execute_control'):
+        dbid = workflow_detail.instance.id
+        force_disable_dbid_list = sysconfig.get('force_disable_dbid', "-1").split()
+        if str(dbid) in force_disable_dbid_list:
+            force_disable_stime = sysconfig.get('force_disable_start', "2400")
+            force_disable_etime = sysconfig.get('force_disable_end', "0000")
+            ctime = datetime.datetime.strftime(ctime, '%H%M')
+            if force_disable_stime < ctime < force_disable_etime:
+                return False
     return result
+
 
 
 def can_timingtask(user, workflow_id):
