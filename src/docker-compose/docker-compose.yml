@@ -6,8 +6,8 @@ services:
     container_name: redis
     restart: always
     command: redis-server --requirepass 123456
-    expose:
-      - "6379"
+    ports:
+      - "6379:6379"
 
   mysql:
     image: mysql:5.7
@@ -26,8 +26,8 @@ services:
     image: hhyo/inception
     container_name: inception
     restart: always
-    expose:
-      - "6669"
+    ports:
+      - "6669:6669"
     volumes:
       - "./inception/inc.cnf:/etc/inc.cnf"
 
@@ -35,8 +35,8 @@ services:
     image: hanchuanchuan/goinception
     container_name: goinception
     restart: always
-    expose:
-      - "4000"
+    ports:
+      - "4000:4000"
     volumes:
       - "./inception/config.toml:/etc/config.toml"
 
