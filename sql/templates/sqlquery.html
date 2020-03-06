@@ -649,6 +649,11 @@
         // 展示数据
         function display_data(data, index) {
             var result = data.data;
+            var user = "{{ user }}";
+            var showexport = false;
+            if (user === "admin") {
+                showexport = true;
+            }
             //获取当前的标签页,如果当前不在执行结果页，则默认新增一个页面
             var active_li_id = sessionStorage.getItem('active_li_id');
             var active_li_title = sessionStorage.getItem('active_li_title');
@@ -714,7 +719,7 @@
                             escape: true,
                             data: result['rows'],
                             columns: columns,
-                            showExport: false,
+                            showExport: showexport,
                             exportDataType: "all",
                             exportTypes: ['json', 'sql', 'csv', 'txt', 'xml', 'xlsx'],
                             exportOptions: {
