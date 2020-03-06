@@ -118,7 +118,7 @@
                                 <input type="button" id="btn-autoreview" class="btn btn-danger" value="SQL检测"/>
                                 <input id="btn-submitsql" type="button" class="btn btn-success" value="SQL提交"/>
                             </div>
-                            <div class="form-group">
+                            <div id="bakupfrom" class="form-group">
                                 <input  id="bak_sql_content" type="text" class="form-control" name="bak_sql_content"
                                 placeholder="如需备份 请填写备份语句"/>
                             </div>
@@ -261,6 +261,11 @@
         // 实例变更获取数据库补全提示
         $("#instance_name").change(function () {
             var optgroup = $('#instance_name :selected').parent().attr('label');
+            if (optgroup === 'MySQL') {
+                $("#bakupfrom").hide();
+            } else {
+                $("#bakupfrom").show();
+            }
             $("#div-backup").show();
             //将数据通过ajax提交给获取db_name
             $.ajax({
