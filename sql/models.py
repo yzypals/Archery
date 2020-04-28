@@ -260,7 +260,7 @@ class WorkflowAudit(models.Model):
     current_audit = models.CharField('当前审批权限组', max_length=20)
     next_audit = models.CharField('下级审批权限组', max_length=20)
     current_status = models.IntegerField('审核状态', choices=workflow_status_choices)
-    pre_audit = models.IntegerField('前置审批者', max_length=20)
+    pre_audit = models.IntegerField('前置审批者', max_length=20, blank=True, null=True)
     create_user = models.CharField('申请人', max_length=30)
     create_user_display = models.CharField('申请人中文名', max_length=50, default='')
     create_time = models.DateTimeField('申请时间', auto_now_add=True)

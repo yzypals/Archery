@@ -108,8 +108,8 @@ class Audit(object):
                     leader_display = Users.objects.get(username=leader_username).display
                     audit_detail.pre_audit = leader_username
                     audit_detail.current_audit = leader_display
-            else:
-                audit_detail.current_audit = audit_auth_groups_list[0]
+                else:
+                    audit_detail.current_audit = audit_auth_groups_list[0]
             # 判断有无下级审核
             if len(audit_auth_groups_list) == 1:
                 audit_detail.next_audit = '-1'
