@@ -368,13 +368,15 @@ class Audit(object):
             try:
                 audit_auth_group = '->'.join([Group.objects.get(id=auth_group_id).name for auth_group_id in
                                               audit_info.audit_auth_groups.split(',')])
+                if audit_info.pre_audit:
+                    audit_auth_group = audit_info.pre_audit + '->' + audit_auth_group
             except Exception:
                 audit_auth_group = audit_info.audit_auth_groups
         if audit_info.current_audit == '-1':
             current_audit_auth_group = None
         elif audit_info.pre_audit:
             try:
-                current_audit_auth_group = Users.objects.get(audit_info.pre_audit).display
+                current_audit_auth_group = Users.objects.get(username=audit_info.pre_audit).display
             except Exception:
                 current_audit_auth_group = audit_info.pre_audit
         else:
