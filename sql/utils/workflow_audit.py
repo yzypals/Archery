@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 from django.contrib.auth.models import Group
+from django.db.models import Q
 from django.utils import timezone
 
 from sql.utils.resource_group import user_groups, auth_group_users
@@ -279,9 +280,9 @@ class Audit(object):
             auth_group_ids = [group.id for group in Group.objects.filter(user=user)]
 
         return WorkflowAudit.objects.filter(
-            current_status=WorkflowDict.workflow_status['audit_wait'],
-            group_id__in=group_ids,
-            current_audit__in=auth_group_ids).count()
+            Q(current_status=WorkflowDict.workflow_status['audit_wait']),
+            Q(group_id__in=group_ids),
+            Q(current_audit__in=auth_group_ids)|Q(pre_audit=user.username)).count()
 
     # 通过审核id获取审核信息
     @staticmethod
