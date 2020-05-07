@@ -262,9 +262,11 @@
     <script src="{% static 'bootstrap-table/js/tableExport.min.js' %}"></script>
     <link rel="stylesheet" href="/static/toastr/toastr.min.css" type="text/css">
     <script type="text/javascript" src="/static/toastr/toastr.min.js"></script>
+    <script src="{% static 'watermark/watermark.js' %}"></script>
 
     <!-- 查询历史  -->
     <script>
+
         //获取查询列表
         function get_querylog(query_log_id) {
             //初始化table
@@ -554,13 +556,20 @@
                 "    <div id=\"mask_time" + tab_number + "\" class=\"navbar-text\" >\n" +
                 "        <small>脱敏时间 : <strong id=\"masking_time" + tab_number + "\"> sec </strong></small>\n" +
                 "    </div>\n" +
-                "    <table id=\"query_result" + tab_number + "\" data-toggle=\"table\" class=\"table table-condensed\"\n" +
+                "    <div style='position: relative'>" + 
+                "       <div class='__wm'></div>" +    
+                "       <table id=\"query_result" + tab_number + "\" data-toggle=\"table\" class=\"table table-condensed\"\n" +
                 "           style=\"table-layout:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\"></table>\n" +
+                "   </div>" +
                 "</div>\t";
             $("#tab-content").append(div);//div添加到div
 
             //激活添加的tab
             $("#nav-tabs a:last").tab('show')
+
+            __canvasWM(document.getElementById('sqlquery_result' + tab_number), {
+                content: '{{user.username}}',
+            });
 
         }
 
