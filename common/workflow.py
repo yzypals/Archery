@@ -1,5 +1,6 @@
 import simplejson as json
 from django.contrib.auth.models import Group
+from django.db.models import Q
 from django.http import HttpResponse
 
 from common.utils.const import WorkflowDict
@@ -30,10 +31,10 @@ def lists(request):
 
     # 只返回所在资源组当前待自己审核的数据
     workflow_audit = WorkflowAudit.objects.filter(
-        workflow_title__icontains=search,
-        current_status=WorkflowDict.workflow_status['audit_wait'],
-        group_id__in=group_ids,
-        current_audit__in=auth_group_ids
+        Q(workflow_title__icontains=search),
+        Q(current_status=WorkflowDict.workflow_status['audit_wait']),
+        Q(group_id__in=group_ids),
+        Q(current_audit__in=auth_group_ids)|Q(pre_audit=user.username)
     )
     # 过滤工单类型
     if workflow_type != 0:
