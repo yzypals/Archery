@@ -12,6 +12,8 @@ class Users(AbstractUser):
     display = models.CharField('显示的中文名', max_length=50, default='')
     failed_login_count = models.IntegerField('失败计数', default=0)
     last_login_failed_at = models.DateTimeField('上次失败登录时间', blank=True, null=True)
+    employee = models.CharField('员工类型', max_length=50, blank=True, default='')
+    manager = models.CharField('领导﻿', max_length=126, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         self.failed_login_count = min(127, self.failed_login_count)
@@ -258,6 +260,7 @@ class WorkflowAudit(models.Model):
     current_audit = models.CharField('当前审批权限组', max_length=20)
     next_audit = models.CharField('下级审批权限组', max_length=20)
     current_status = models.IntegerField('审核状态', choices=workflow_status_choices)
+    pre_audit = models.CharField('前置审批者', max_length=50, blank=True, null=True)
     create_user = models.CharField('申请人', max_length=30)
     create_user_display = models.CharField('申请人中文名', max_length=50, default='')
     create_time = models.DateTimeField('申请时间', auto_now_add=True)

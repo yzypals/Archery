@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 from django.contrib.auth.models import Group
+from django.db.models import Q
 from django.utils import timezone
 
 from sql.utils.resource_group import user_groups, auth_group_users
@@ -100,12 +101,23 @@ class Audit(object):
             audit_detail.workflow_title = workflow_title
             audit_detail.workflow_remark = workflow_remark
             audit_detail.audit_auth_groups = ','.join(audit_auth_groups_list)
-            audit_detail.current_audit = audit_auth_groups_list[0]
+            if workflow_type == WorkflowDict.workflow_type['sqlreview']:
+                create_user_object = Users.objects.get(username=create_user)
+                if create_user_object.employee == "Member" and create_user_object.manager:
+                    # cn=yzy,ou=dzg,dc=ldap,dc=900jit,dc=com  > yzy
+                    leader_username = create_user_object.manager.split(",")[0].split("=")[1]
+                    audit_detail.pre_audit = leader_username
+                    audit_detail.current_audit = leader_username
+            if not audit_detail.current_audit:
+                audit_detail.current_audit = audit_auth_groups_list[0]
             # 判断有无下级审核
-            if len(audit_auth_groups_list) == 1:
-                audit_detail.next_audit = '-1'
+            if audit_detail.pre_audit:
+                audit_detail.next_audit = audit_auth_groups_list[0]
             else:
-                audit_detail.next_audit = audit_auth_groups_list[1]
+                if len(audit_auth_groups_list) == 1:
+                    audit_detail.next_audit = '-1'
+                else:
+                    audit_detail.next_audit = audit_auth_groups_list[1]
 
             audit_detail.current_status = WorkflowDict.workflow_status['audit_wait']
             audit_detail.create_user = create_user
@@ -151,6 +163,8 @@ class Audit(object):
                 # 更新主表审核下级审核组和当前审核组
                 audit_result = WorkflowAudit()
                 audit_result.audit_id = audit_id
+                if audit_detail.current_audit == audit_detail.pre_audit:
+                    audit_detail.pre_audit = None
                 audit_result.current_status = WorkflowDict.workflow_status['audit_wait']
                 audit_result.current_audit = audit_detail.next_audit
                 # 判断后续是否还有下下一级审核组
@@ -164,7 +178,7 @@ class Audit(object):
                         # 存在下下级审核组
                         else:
                             audit_result.next_audit = audit_auth_groups_list[index + 1]
-                audit_result.save(update_fields=['current_audit', 'next_audit', 'current_status'])
+                audit_result.save(update_fields=['current_audit', 'next_audit', 'current_status', 'pre_audit'])
 
             # 插入审核明细数据
             audit_detail_result = WorkflowAuditDetail()
@@ -266,9 +280,9 @@ class Audit(object):
             auth_group_ids = [group.id for group in Group.objects.filter(user=user)]
 
         return WorkflowAudit.objects.filter(
-            current_status=WorkflowDict.workflow_status['audit_wait'],
-            group_id__in=group_ids,
-            current_audit__in=auth_group_ids).count()
+            Q(current_status=WorkflowDict.workflow_status['audit_wait']),
+            Q(group_id__in=group_ids),
+            Q(current_audit__in=auth_group_ids)|Q(pre_audit=user.username)).count()
 
     # 通过审核id获取审核信息
     @staticmethod
@@ -319,17 +333,29 @@ class Audit(object):
         # 只有待审核状态数据才可以审核
         if audit_info.current_status == WorkflowDict.workflow_status['audit_wait']:
             try:
-                auth_group_id = Audit.detail_by_workflow_id(workflow_id, workflow_type).current_audit
+                workflow_audit = Audit.detail_by_workflow_id(workflow_id, workflow_type)
+                auth_group_id = workflow_audit.current_audit
+                pre_audit_name = workflow_audit.pre_audit
+                if pre_audit_name == user.username:
+                    return True
                 audit_auth_group = Group.objects.get(id=auth_group_id).name
             except Exception:
-                raise Exception('当前审批auth_group_id不存在，请检查并清洗历史数据')
-            if auth_group_users([audit_auth_group], group_id).filter(id=user.id).exists() or user.is_superuser == 1:
-                if workflow_type == 1:
-                    if user.has_perm('sql.query_review'):
-                        result = True
-                elif workflow_type == 2:
-                    if user.has_perm('sql.sql_review'):
-                        result = True
+                if user.is_superuser == 1:
+                    if workflow_type == 1:
+                        if user.has_perm('sql.query_review'):
+                            result = True
+                    elif workflow_type == 2:
+                        if user.has_perm('sql.sql_review'):
+                            result = True
+                # raise Exception('当前审批auth_group_id不存在，请检查并清洗历史数据')
+            else:
+                if auth_group_users([audit_auth_group], group_id).filter(id=user.id).exists() or user.is_superuser == 1:
+                    if workflow_type == 1:
+                        if user.has_perm('sql.query_review'):
+                            result = True
+                    elif workflow_type == 2:
+                        if user.has_perm('sql.sql_review'):
+                            result = True
         return result
 
     # 获取当前工单审批流程和当前审核组
@@ -342,10 +368,17 @@ class Audit(object):
             try:
                 audit_auth_group = '->'.join([Group.objects.get(id=auth_group_id).name for auth_group_id in
                                               audit_info.audit_auth_groups.split(',')])
+                if audit_info.pre_audit:
+                    audit_auth_group = audit_info.pre_audit + '->' + audit_auth_group
             except Exception:
                 audit_auth_group = audit_info.audit_auth_groups
         if audit_info.current_audit == '-1':
             current_audit_auth_group = None
+        elif audit_info.pre_audit:
+            try:
+                current_audit_auth_group = Users.objects.get(username=audit_info.pre_audit).display
+            except Exception:
+                current_audit_auth_group = audit_info.pre_audit
         else:
             try:
                 current_audit_auth_group = Group.objects.get(id=audit_info.current_audit).name

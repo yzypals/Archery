@@ -85,9 +85,13 @@ def notify_for_audit(audit_id, **kwargs):
     # 准备消息格式
     if status == WorkflowDict.workflow_status['audit_wait']:  # 申请阶段
         msg_title = "[{}]新的工单申请#{}".format(workflow_type_display, audit_id)
-        # 接收人，发送给该资源组内对应权限组所有的用户
-        auth_group_names = Group.objects.get(id=audit_detail.current_audit).name
-        msg_to = auth_group_users([auth_group_names], audit_detail.group_id)
+            # 如果有前置审核人，发送给前置审核人
+        if audit_detail.pre_audit:
+            msg_to = [Users.objects.get(username=audit_detail.pre_audit)]
+        else:
+            # 接收人，发送给该资源组内对应权限组所有的用户
+            auth_group_names = Group.objects.get(id=audit_detail.current_audit).name
+            msg_to = auth_group_users([auth_group_names], audit_detail.group_id)
         # 消息内容
         msg_content = '''发起人：{}\n组：{}\n目标实例：{}\n数据库：{}\n工单名称：{}\n工单详情：{}\n'''.format(
             workflow_from,
