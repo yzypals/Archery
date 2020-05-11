@@ -12,7 +12,7 @@ class Users(AbstractUser):
     display = models.CharField('显示的中文名', max_length=50, default='')
     failed_login_count = models.IntegerField('失败计数', default=0)
     last_login_failed_at = models.DateTimeField('上次失败登录时间', blank=True, null=True)
-    employee = models.CharField('员工类型', max_length=50, blank=True, default='')
+    employee = models.CharField('员工类型', max_length=50, blank=True, null=True)
     manager = models.CharField('领导﻿', max_length=126, blank=True, null=True)
 
     def save(self, *args, **kwargs):
