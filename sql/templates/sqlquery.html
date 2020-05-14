@@ -658,7 +658,7 @@
         // 展示数据
         function display_data(data, index) {
             var result = data.data;
-            var user = "{{ user }}";
+            var user = "{{ user.username }}";
             var showexport = false;
             if (user === "admin") {
                 showexport = true;
