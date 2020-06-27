@@ -103,11 +103,13 @@ class Audit(object):
             audit_detail.audit_auth_groups = ','.join(audit_auth_groups_list)
             if workflow_type == WorkflowDict.workflow_type['sqlreview']:
                 create_user_object = Users.objects.get(username=create_user)
+                #Member Leader
                 if create_user_object.employee == "Member" and create_user_object.manager:
                     # cn=yzy,ou=dzg,dc=ldap,dc=900jit,dc=com  > yzy
                     leader_username = create_user_object.manager.split(",")[0].split("=")[1]
-                    audit_detail.pre_audit = leader_username
-                    audit_detail.current_audit = leader_username
+                    if not Users.objects.filter(username=leader_username,groups=Group.objects.get(id=audit_auth_groups_list[0])):
+                        audit_detail.pre_audit = leader_username
+                        audit_detail.current_audit = leader_username
             if not audit_detail.current_audit:
                 audit_detail.current_audit = audit_auth_groups_list[0]
             # 判断有无下级审核
